@@ -253,6 +253,11 @@ export const DAILY_QUOTES_BY_LANG = {
     { text: "Raconter sa vie, c'est la vivre deux fois.", author: 'Gabriel García Márquez' },
     { text: "Il faut du courage pour se raconter honnêtement.", author: 'James Baldwin' },
     { text: 'Chaque famille est un roman.', author: 'Elena Ferrante' },
+    { text: "On n'écrit pas ce qu'on veut, et de cette façon-là on commence à être libéré.", author: 'Marguerite Yourcenar' },
+    { text: "Je me souviens. Je me souviens de tout.", author: 'Georges Perec' },
+    { text: "Écrire, c'est aussi une façon d'aimer sans être aimé en retour.", author: 'Patrick Modiano' },
+    { text: "L'écriture est le voyage le plus long, celui qui vous conduit à vous-même.", author: 'Annie Ernaux' },
+    { text: "Longtemps, je me suis couché de bonne heure.", author: 'Marcel Proust' },
   ],
   en: [
     { text: 'Every life deserves a novel.', author: 'Simone de Beauvoir' },
@@ -262,6 +267,10 @@ export const DAILY_QUOTES_BY_LANG = {
     { text: 'To tell your life is to live it twice.', author: 'Gabriel García Márquez' },
     { text: 'It takes courage to tell your story honestly.', author: 'James Baldwin' },
     { text: 'Every family is a novel.', author: 'Elena Ferrante' },
+    { text: "One does not write what one wants, and in this way one begins to be freed.", author: 'Marguerite Yourcenar' },
+    { text: "I remember. I remember everything.", author: 'Georges Perec' },
+    { text: "Writing is the longest journey, the one that leads you to yourself.", author: 'Annie Ernaux' },
+    { text: "For a long time I would go to bed early.", author: 'Marcel Proust' },
   ],
   es: [
     { text: 'Toda vida merece una novela.', author: 'Simone de Beauvoir' },
@@ -271,6 +280,10 @@ export const DAILY_QUOTES_BY_LANG = {
     { text: 'Contar tu vida es vivirla dos veces.', author: 'Gabriel García Márquez' },
     { text: 'Hace falta coraje para contarse con honestidad.', author: 'James Baldwin' },
     { text: 'Cada familia es una novela.', author: 'Elena Ferrante' },
+    { text: "No se escribe lo que se quiere, y de esa manera uno comienza a liberarse.", author: 'Marguerite Yourcenar' },
+    { text: "Me acuerdo. Me acuerdo de todo.", author: 'Georges Perec' },
+    { text: "La escritura es el viaje más largo, el que te conduce a ti mismo.", author: 'Annie Ernaux' },
+    { text: "Durante mucho tiempo me acosté temprano.", author: 'Marcel Proust' },
   ],
 }
 

@@ -1,16 +1,12 @@
 import { NextRequest } from 'next/server'
-
-// Open Router - OpenAI-compatible endpoint
-// Model: claude-haiku via Open Router (can swap freely)
-const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
-const OPENROUTER_MODEL = 'anthropic/claude-haiku-4-5'
+import { getAgentModel, OPENROUTER_URL } from '@/lib/ai/agent-config'
 
 type ConvoMsg = { role: 'user' | 'assistant'; content: string }
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
   const { action, chapter, userName, lang, content, conversation, intention, destinataire, sessions, profile, memories } = body as {
-    action: 'guide_question' | 'guide_generate' | 'dicte_reformulate' | 'libre_inspire' | 'onboarding_style' | 'entretien_question' | 'entretien_close' | 'upload_analyze' | 'brainstorm_question' | 'brainstorm_generate'
+    action: 'guide_question' | 'guide_generate' | 'dicte_reformulate' | 'libre_inspire' | 'onboarding_style' | 'entretien_question' | 'entretien_close' | 'upload_analyze' | 'brainstorm_question' | 'brainstorm_generate' | 'archiviste_update' | 'archiviste_gaps' | 'archiviste_style' | 'relecteur_review' | 'architecte_review'
     chapter?: { title: string; theme: string; prompt?: string }
     userName: string
     lang: 'fr' | 'en' | 'es'
@@ -21,24 +17,47 @@ export async function POST(req: NextRequest) {
     sessions?: { chapterId: string; wordCount: number; content: string; date: string }[]
     profile?: { intention: string; destinataire: string; frequence: string; ton?: string }
     memories?: string[]
+    isAccomp?: boolean
+    subjectName?: string
   }
 
+  const { isAccomp, subjectName: subj } = body as { isAccomp?: boolean; subjectName?: string }
+  const { bookStateText, styleFingerprint, previousPassages, allSessions: allSessionsText } = body as {
+    bookStateText?: string
+    styleFingerprint?: string
+    previousPassages?: string[]
+    allSessions?: string
+  }
   const langLabel = lang === 'fr' ? 'French' : lang === 'es' ? 'Spanish' : 'English'
 
   let systemPrompt = ''
   let messages: ConvoMsg[] = []
   let maxTokens = 150
+  let agentId: Parameters<typeof getAgentModel>[0] = 'interrogateur'
 
   if (action === 'guide_question') {
-    systemPrompt = [
-      `You are a documentary filmmaker and memoirist guiding ${userName} through their memories for chapter "${chapter!.title}" (${chapter!.theme}).`,
-      `Your role: ask ONE precise, concrete question that takes them INSIDE a specific memory - a place, an object, a face, a sound, a smell, a precise instant.`,
-      `Navigate like a camera: zoom into the scene, explore what was around them, what happened just before or just after, what they saw or touched or heard.`,
-      `NEVER ask about feelings, emotions, inner states, or the meaning of a memory. Focus only on concrete, tangible, observable details.`,
-      `Examples of good questions: "Décrivez l'endroit exact où vous étiez." / "Qui d'autre était présent ?" / "Qu'avez-vous remarqué en premier ?" / "Que s'est-il passé juste après ?"`,
-      chapter!.prompt ? `Chapter context: ${chapter!.prompt}` : '',
-      `Language: ${langLabel}. ONE question only, direct, no preamble, no "I", just the question itself.`,
-    ].filter(Boolean).join(' ')
+    agentId = 'interrogateur'
+    if (isAccomp && subj) {
+      systemPrompt = [
+        `You are helping ${userName} conduct a biographical interview with ${subj} for chapter "${chapter!.title}" (${chapter!.theme}).`,
+        `Generate ONE concrete question that ${userName} can ask ${subj} directly, to draw out a specific memory — a place, an object, a face, a sound, a sequence of events.`,
+        `The question must be simple, warm, and accessible — phrased as if ${userName} is speaking gently to ${subj}.`,
+        `NEVER ask about feelings, meanings, or psychological reflection. Focus on tangible, observable, concrete details.`,
+        `Examples: "Où étiez-vous exactement ce jour-là ?" / "Qui était avec vous ?" / "Qu'avez-vous vu en premier ?" / "Que s'est-il passé ensuite ?"`,
+        chapter!.prompt ? `Chapter context: ${chapter!.prompt}` : '',
+        `Language: ${langLabel}. ONE question only, addressed directly to ${subj}, no preamble.`,
+      ].filter(Boolean).join(' ')
+    } else {
+      systemPrompt = [
+        `You are a documentary filmmaker and memoirist guiding ${userName} through their memories for chapter "${chapter!.title}" (${chapter!.theme}).`,
+        `Your role: ask ONE precise, concrete question that takes them INSIDE a specific memory - a place, an object, a face, a sound, a smell, a precise instant.`,
+        `Navigate like a camera: zoom into the scene, explore what was around them, what happened just before or just after, what they saw or touched or heard.`,
+        `NEVER ask about feelings, emotions, inner states, or the meaning of a memory. Focus only on concrete, tangible, observable details.`,
+        `Examples of good questions: "Décrivez l'endroit exact où vous étiez." / "Qui d'autre était présent ?" / "Qu'avez-vous remarqué en premier ?" / "Que s'est-il passé juste après ?"`,
+        chapter!.prompt ? `Chapter context: ${chapter!.prompt}` : '',
+        `Language: ${langLabel}. ONE question only, direct, no preamble, no "I", just the question itself.`,
+      ].filter(Boolean).join(' ')
+    }
 
     if (!conversation || conversation.length === 0) {
       messages = [{ role: 'user', content: 'Ask me your first question to enter the memory.' }]
@@ -52,18 +71,29 @@ export async function POST(req: NextRequest) {
   }
 
   else if (action === 'guide_generate') {
+    agentId = 'ecrivain'
     const convoText = (conversation || [])
       .filter((m) => m.role === 'user')
       .map((m) => m.content)
       .join('\n\n')
 
-    systemPrompt = [
-      `You are a literary writer helping ${userName} write their memoir.`,
-      `Based on their answers to interview questions, write a rich, flowing paragraph in FIRST PERSON (as ${userName}).`,
-      `Chapter: "${chapter!.title}" - ${chapter!.theme}.`,
-      `Style: literary, warm, sensory - like a published memoir. Include specific details they mentioned.`,
-      `Language: ${langLabel}. Write 180-240 words of prose. No meta-commentary, just the text itself.`,
-    ].join(' ')
+    if (isAccomp && subj) {
+      systemPrompt = [
+        `You are a literary writer helping ${userName} write the memoir of ${subj}.`,
+        `Based on the notes and answers gathered during the interview, write a rich, flowing paragraph in THIRD PERSON about ${subj}.`,
+        `Chapter: "${chapter!.title}" - ${chapter!.theme}.`,
+        `Style: literary, warm, sensory - like a published biographical memoir. Include specific details mentioned. Write about ${subj} as "il" or "elle" or their name, as befits the language.`,
+        `Language: ${langLabel}. Write 180-240 words of prose. No meta-commentary, just the text itself.`,
+      ].join(' ')
+    } else {
+      systemPrompt = [
+        `You are a literary writer helping ${userName} write their memoir.`,
+        `Based on their answers to interview questions, write a rich, flowing paragraph in FIRST PERSON (as ${userName}).`,
+        `Chapter: "${chapter!.title}" - ${chapter!.theme}.`,
+        `Style: literary, warm, sensory - like a published memoir. Include specific details they mentioned.`,
+        `Language: ${langLabel}. Write 180-240 words of prose. No meta-commentary, just the text itself.`,
+      ].join(' ')
+    }
 
     messages = [
       {
@@ -75,18 +105,29 @@ export async function POST(req: NextRequest) {
   }
 
   else if (action === 'dicte_reformulate') {
-    systemPrompt = [
-      `You are a literary editor specializing in memoir writing.`,
-      `Rewrite the following raw text as elegant memoir prose in FIRST PERSON.`,
-      `Keep ALL the facts, memories, and emotions - transform the style into literary, flowing prose with sensory detail.`,
-      `Language: ${langLabel}. Write only the rewritten text, no commentary. Maintain similar length.`,
-    ].join(' ')
+    agentId = 'ecrivain'
+    if (isAccomp && subj) {
+      systemPrompt = [
+        `You are a literary editor specializing in biographical memoir writing.`,
+        `Rewrite the following raw notes as elegant memoir prose in THIRD PERSON about ${subj}.`,
+        `Keep ALL the facts and details - transform the style into literary, flowing biographical prose with sensory detail. Refer to ${subj} by name or as "il"/"elle" as appropriate.`,
+        `Language: ${langLabel}. Write only the rewritten text, no commentary. Maintain similar length.`,
+      ].join(' ')
+    } else {
+      systemPrompt = [
+        `You are a gentle copy-editor for memoir writing. Your role is to POLISH, not rewrite.`,
+        `Lightly improve the following text: fix grammar, smooth awkward phrasing, add a touch of sensory precision where natural.`,
+        `STRICT RULES: preserve the author's exact voice, rhythm, and all original ideas. Do NOT restructure sentences. Do NOT add new content or metaphors. Stay as close to the original as possible — only smooth what is rough.`,
+        `Language: ${langLabel}. Output only the polished text, no commentary.`,
+      ].join(' ')
+    }
 
     messages = [{ role: 'user', content: content || '' }]
     maxTokens = 600
   }
 
   else if (action === 'libre_inspire') {
+    agentId = 'ecrivain'
     systemPrompt = [
       `You are a creative writing companion for a memoir app.`,
       `Give 1-2 evocative opening sentences to help ${userName} begin writing a memoir passage about "${chapter!.title}" (${chapter!.theme}).`,
@@ -100,6 +141,7 @@ export async function POST(req: NextRequest) {
   }
 
   else if (action === 'onboarding_style') {
+    agentId = 'ecrivain'
     systemPrompt = [
       `You are a master memoir writer. Based on the author's context, generate exactly 3 short opening memoir excerpts.`,
       `Author: ${userName || 'the author'}. Intention: "${intention || 'share memories'}". Writing for: "${destinataire || 'family'}".`,
@@ -116,6 +158,7 @@ export async function POST(req: NextRequest) {
   }
 
   else if (action === 'entretien_question') {
+    agentId = 'interrogateur'
     // The AI plays a warm biographical interviewer who has read the user's writing
     const recentSnippets = (sessions ?? [])
       .slice(-3)
@@ -147,6 +190,7 @@ export async function POST(req: NextRequest) {
   }
 
   else if (action === 'entretien_close') {
+    agentId = 'archiviste'
     // Summarize the conversation as seeds for future chapters
     const convoText = (conversation ?? [])
       .map((m) => `${m.role === 'user' ? userName : 'Memoir'}: ${m.content}`)
@@ -164,6 +208,7 @@ export async function POST(req: NextRequest) {
   }
 
   else if (action === 'upload_analyze') {
+    agentId = 'archiviste'
     systemPrompt = [
       `You are a literary editor analyzing an author's existing text to extract memory seeds for a memoir.`,
       `Read the text and identify 5-10 distinct memory seeds — specific scenes, characters, time periods, themes.`,
@@ -180,6 +225,7 @@ export async function POST(req: NextRequest) {
   }
 
   else if (action === 'brainstorm_question') {
+    agentId = 'architecte'
     const memoryContext = (memories ?? []).length > 0
       ? `\nMemory seeds from their uploads:\n${(memories ?? []).slice(0, 10).map((m, i) => `${i + 1}. ${m}`).join('\n')}`
       : ''
@@ -208,6 +254,7 @@ export async function POST(req: NextRequest) {
   }
 
   else if (action === 'brainstorm_generate') {
+    agentId = 'architecte'
     const convoText = (conversation ?? [])
       .map((m) => `${m.role === 'user' ? userName : 'Memoir'}: ${m.content}`)
       .join('\n')
@@ -239,6 +286,109 @@ export async function POST(req: NextRequest) {
     maxTokens = 1500
   }
 
+  // ── ARCHIVISTE ────────────────────────────────────────────────────────────────
+
+  else if (action === 'archiviste_update') {
+    agentId = 'archiviste'
+    systemPrompt = [
+      `You are the archivist of a memoir project. Analyze this new passage and extract structured data.`,
+      `Return ONLY a raw JSON object (no markdown, no backticks) with this shape:`,
+      `{`,
+      `  "characters": [{ "name": string, "relation": string, "period": string }],`,
+      `  "events": [{ "date": string, "title": string, "description": string }],`,
+      `  "contradictions": [{ "type": string, "description": string }]`,
+      `}`,
+      `Characters: only people explicitly named or clearly identified. Relation = their relationship to the author.`,
+      `Events: only clearly datable or periodable moments. Date = free text ("1978", "Été 1982", etc.).`,
+      `Contradictions: facts that conflict with the existing book state provided.`,
+      bookStateText ? `Existing book state:\n${bookStateText}` : '',
+      `Language of analysis: ${langLabel}. Output raw JSON only.`,
+    ].filter(Boolean).join('\n')
+    messages = [{ role: 'user', content: `New passage:\n\n${content || ''}` }]
+    maxTokens = 600
+  }
+
+  else if (action === 'archiviste_gaps') {
+    agentId = 'archiviste'
+    systemPrompt = [
+      `You are the archivist of a memoir project. Analyze the current state of the book and identify gaps.`,
+      `Return ONLY a raw JSON array of gaps (no markdown, no backticks):`,
+      `[{ "chapterId": string, "type": "missing_chapter"|"undefined_character"|"timeline_gap"|"style_drift", "description": string, "priority": "high"|"medium"|"low" }]`,
+      `missing_chapter: chapter with 0 words that is important to the narrative.`,
+      `undefined_character: a person mentioned in sessions but not in the character registry.`,
+      `timeline_gap: a significant period of the author's life not covered by any chapter.`,
+      `style_drift: a passage whose style seems inconsistent with the rest (only flag if obvious).`,
+      `Maximum 8 gaps. Order by priority descending. Only flag real issues.`,
+      `Language: ${langLabel}. Output raw JSON array only.`,
+    ].join('\n')
+    messages = [{ role: 'user', content: `Book state:\n\n${bookStateText || 'No data yet.'}` }]
+    maxTokens = 800
+  }
+
+  else if (action === 'archiviste_style') {
+    agentId = 'archiviste'
+    systemPrompt = [
+      `You are a literary analyst. Analyze the following memoir passages written by ${userName} and extract their writing style fingerprint.`,
+      `Write 3-5 sentences describing:`,
+      `- Sentence length and rhythm (short/clipped vs long/flowing)`,
+      `- Vocabulary register (simple/familiar vs literary/elevated)`,
+      `- Sensory preferences (which senses they favor: visual, tactile, olfactory...)`,
+      `- Emotional tone (restrained/factual vs lyrical/intimate)`,
+      `- Any distinctive stylistic traits`,
+      `This fingerprint will be given to a writing agent so it MUST reproduce this exact style. Be precise and actionable.`,
+      `Language: ${langLabel}. Output only the style description, no preamble.`,
+    ].join('\n')
+    messages = [{ role: 'user', content: `Passages by ${userName}:\n\n${allSessionsText || content || ''}` }]
+    maxTokens = 300
+  }
+
+  // ── RELECTEUR ─────────────────────────────────────────────────────────────────
+
+  else if (action === 'relecteur_review') {
+    agentId = 'relecteur'
+    systemPrompt = [
+      `You are a careful, benevolent first-time reader of a memoir. You know NOTHING about the author's life except what is written.`,
+      `Read this new passage in the context of everything written so far. Flag only concrete problems that would confuse a reader.`,
+      `Return ONLY a raw JSON object (no markdown):`,
+      `{ "reviews": [{ "type": "reference_opaque"|"contradiction"|"ellipse"|"repetition"|"opportunite", "passage": string, "explication": string, "suggestion": string }] }`,
+      `reference_opaque: a pronoun or name used without enough context for a reader to know who/what it refers to.`,
+      `contradiction: a fact (date, age, relationship) that conflicts with a previous passage.`,
+      `ellipse: a time jump or implied event that a reader couldn't follow without being the author.`,
+      `repetition: an anecdote or detail that was already told in a previous passage.`,
+      `opportunite: a moment that is too factual and could benefit from one concrete sensory detail (flag sparingly).`,
+      `Maximum 3 reviews. Only flag what genuinely impairs reading. If nothing significant: return { "reviews": [] }.`,
+      `"passage": copy the exact short quote from the text. "suggestion": concrete fix, not a rewrite.`,
+      `Language: ${langLabel}. Output raw JSON only.`,
+    ].join('\n')
+    messages = [{
+      role: 'user',
+      content: `Everything written so far:\n\n${allSessionsText || ''}\n\n---\n\nNew passage to review:\n\n${content || ''}`,
+    }]
+    maxTokens = 700
+  }
+
+  // ── ARCHITECTE NARRATIF ───────────────────────────────────────────────────────
+
+  else if (action === 'architecte_review') {
+    agentId = 'architecte'
+    systemPrompt = [
+      `You are an editorial director specializing in memoir books. Analyze the current state of this memoir and give concrete architectural feedback.`,
+      `Return ONLY a raw JSON object (no markdown):`,
+      `{`,
+      `  "equilibre": { "analysis": string, "issues": [{ "chapterId": string, "description": string }] },`,
+      `  "fil_rouge": { "analysis": string, "coherent": boolean },`,
+      `  "suggestions": [{ "type": "reorder"|"split"|"merge"|"add"|"develop", "chapterId": string, "description": string, "actionable": string }]`,
+      `}`,
+      `equilibre: are chapters balanced in depth? Flag over- or under-represented ones.`,
+      `fil_rouge: is there a consistent central theme running through all passages?`,
+      `suggestions: max 3, concrete and actionable. "actionable" = exact next step for the user (1 sentence).`,
+      `Be direct. No compliments. Only what genuinely needs attention.`,
+      `Language: ${langLabel}. Output raw JSON only.`,
+    ].join('\n')
+    messages = [{ role: 'user', content: `Book state:\n\n${bookStateText || ''}\n\nAll passages:\n\n${allSessionsText || ''}` }]
+    maxTokens = 900
+  }
+
   else {
     return new Response('Unknown action', { status: 400 })
   }
@@ -258,7 +408,7 @@ export async function POST(req: NextRequest) {
         'X-Title': 'Memoir',
       },
       body: JSON.stringify({
-        model: OPENROUTER_MODEL,
+        model: getAgentModel(agentId),
         max_tokens: maxTokens,
         stream: true,
         messages: [

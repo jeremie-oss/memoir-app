@@ -63,8 +63,10 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(0)
   const [visible, setVisible] = useState(true)
 
-  // Step 0 - prénom
+  // Step 0 - rôle + prénom
+  const [role, setRole] = useState<'auteur' | 'accompagnateur' | ''>('')
   const [prenom, setPrenom] = useState('')
+  const [subjectName, setSubjectName] = useState('')
 
   // Step 1 - intention
   const [intention, setIntention] = useState('')
@@ -146,6 +148,8 @@ export default function OnboardingPage() {
       styleExtrait: styleSelected >= 0 ? (styleExtraits[styleSelected] ?? '') : '',
       frequence: frequence as 'quotidien' | 'hebdo' | 'libre',
       duree: duree as 15 | 30 | 45,
+      role: role || 'auteur',
+      subjectName: role === 'accompagnateur' ? subjectName : '',
     })
     store.completeOnboarding()
     router.push('/home')
@@ -154,7 +158,7 @@ export default function OnboardingPage() {
   if (!mounted) return null
 
   const canContinue = [
-    prenom.trim().length > 0,
+    role !== '' && prenom.trim().length > 0,
     intention.length > 0 || intentionCustom.trim().length > 0,
     destinataire.length > 0,
     styleSelected >= 0,
@@ -208,7 +212,13 @@ export default function OnboardingPage() {
           visible ? 'opacity-100' : 'opacity-0'
         }`}
       >
-        {step === 0 && <StepPrenom prenom={prenom} setPrenom={setPrenom} />}
+        {step === 0 && (
+          <StepPrenom
+            prenom={prenom} setPrenom={setPrenom}
+            role={role} setRole={setRole}
+            subjectName={subjectName} setSubjectName={setSubjectName}
+          />
+        )}
         {step === 1 && (
           <StepIntention
             intention={intention} setIntention={(v) => { setIntention(v); setIntentionCustom('') }}
@@ -262,6 +272,22 @@ export default function OnboardingPage() {
           </button>
         )}
 
+        {/* Skip onboarding entirely (step 0 only) */}
+        {step === 0 && (
+          <button
+            onClick={() => {
+              if (prenom.trim()) {
+                store.setUserName(prenom.trim())
+              }
+              store.completeOnboarding()
+              router.push('/home')
+            }}
+            className="text-center text-xs text-[#9C8E80] py-2 hover:text-[#7A4F32] transition-colors"
+          >
+            Passer la personnalisation →
+          </button>
+        )}
+
         {/* Back */}
         {step > 0 && (
           <button
@@ -278,31 +304,113 @@ export default function OnboardingPage() {
 
 // ── Step: Prénom ───────────────────────────────────────────────
 
-function StepPrenom({ prenom, setPrenom }: { prenom: string; setPrenom: (v: string) => void }) {
+function StepPrenom({
+  prenom, setPrenom,
+  role, setRole,
+  subjectName, setSubjectName,
+}: {
+  prenom: string; setPrenom: (v: string) => void
+  role: 'auteur' | 'accompagnateur' | ''; setRole: (v: 'auteur' | 'accompagnateur') => void
+  subjectName: string; setSubjectName: (v: string) => void
+}) {
   const ref = useRef<HTMLInputElement>(null)
-  useEffect(() => { setTimeout(() => ref.current?.focus(), 200) }, [])
+  useEffect(() => { setTimeout(() => ref.current?.focus(), 300) }, [role])
+
+  const isAccomp = role === 'accompagnateur'
 
   return (
-    <div className="flex flex-col flex-1 justify-center gap-8">
+    <div className="flex flex-col flex-1 justify-center gap-6">
+      {/* Choix de rôle */}
       <div>
-        <p className="text-[11px] text-[#C4622A] tracking-widest uppercase mb-3">Bienvenue</p>
-        <h1 className="font-display text-4xl font-bold text-[#1C1C2E] leading-tight mb-3">
-          Avant tout,<br />
-          <em className="text-[#C4622A]">comment vous appelle-t-on ?</em>
-        </h1>
-        <p className="text-[#9C8E80] text-sm leading-relaxed">
-          Ce prénom accompagnera chaque page de votre histoire.
-        </p>
+        <p className="text-[11px] text-[#C4622A] tracking-widest uppercase mb-4">Bienvenue sur Memoir</p>
+        <div className="grid grid-cols-2 gap-3 mb-2">
+          <button
+            onClick={() => setRole('auteur')}
+            className={`flex flex-col items-start gap-2 p-4 rounded-2xl border-2 transition-all text-left ${
+              role === 'auteur'
+                ? 'border-[#C4622A] bg-[#C4622A]/5'
+                : 'border-[#EDE4D8] bg-white/60 hover:border-[#C4622A]/40'
+            }`}
+          >
+            <span className="text-2xl">✦</span>
+            <div>
+              <p className={`text-sm font-medium ${role === 'auteur' ? 'text-[#1C1C2E]' : 'text-[#7A4F32]'}`}>
+                J'écris mon histoire
+              </p>
+              <p className="text-[10px] text-[#9C8E80] mt-0.5 leading-snug">Je suis l'auteur</p>
+            </div>
+          </button>
+          <button
+            onClick={() => setRole('accompagnateur')}
+            className={`flex flex-col items-start gap-2 p-4 rounded-2xl border-2 transition-all text-left ${
+              role === 'accompagnateur'
+                ? 'border-[#C4622A] bg-[#C4622A]/5'
+                : 'border-[#EDE4D8] bg-white/60 hover:border-[#C4622A]/40'
+            }`}
+          >
+            <span className="text-2xl">◎</span>
+            <div>
+              <p className={`text-sm font-medium ${role === 'accompagnateur' ? 'text-[#1C1C2E]' : 'text-[#7A4F32]'}`}>
+                J'aide quelqu'un à écrire
+              </p>
+              <p className="text-[10px] text-[#9C8E80] mt-0.5 leading-snug">Je suis le guide</p>
+            </div>
+          </button>
+        </div>
       </div>
-      <input
-        ref={ref}
-        type="text"
-        value={prenom}
-        onChange={e => setPrenom(e.target.value)}
-        onKeyDown={e => e.key === 'Enter' && prenom.trim() && (document.activeElement as HTMLElement)?.blur()}
-        placeholder="Votre prénom"
-        className="text-3xl font-display bg-transparent border-b-2 border-[#EDE4D8] focus:border-[#C4622A] outline-none py-3 text-[#1C1C2E] placeholder:text-[#C4B9A8] transition-colors w-full"
-      />
+
+      {/* Lettre de Jérémie — auteur uniquement */}
+      {role === 'auteur' && (
+        <div className="bg-[#F5EFE0] border border-[#EDE4D8] rounded-2xl px-5 py-4">
+          <p className="text-[10px] text-[#C4622A] tracking-widest uppercase mb-2">Pourquoi Memoir existe</p>
+          <p className="font-display text-sm italic text-[#7A4F32] leading-relaxed">
+            "J'ai créé Memoir parce que ma grand-mère a 100 ans et que je refuse que ses mots disparaissent avec elle.
+            Si vous me confiez votre histoire, je vous promets de la traiter avec le même soin."
+          </p>
+          <p className="text-[10px] text-[#9C8E80] mt-2">— Jérémie, fondateur</p>
+        </div>
+      )}
+
+      {/* Message accompagnateur */}
+      {isAccomp && (
+        <div className="bg-[#1C1C2E] rounded-2xl px-5 py-4">
+          <p className="text-[10px] text-[#C4622A] tracking-widest uppercase mb-2">Mode accompagnateur</p>
+          <p className="font-display text-sm italic text-[#FAF8F4]/80 leading-relaxed">
+            "Memoir vous guide pour recueillir et mettre en mots l'histoire de quelqu'un que vous aimez."
+          </p>
+        </div>
+      )}
+
+      {/* Prénom du guide */}
+      {role !== '' && (
+        <div>
+          <p className="text-[#9C8E80] text-xs mb-2">
+            {isAccomp ? 'Votre prénom (le guide)' : 'Comment vous appelle-t-on ?'}
+          </p>
+          <input
+            ref={ref}
+            type="text"
+            value={prenom}
+            onChange={e => setPrenom(e.target.value)}
+            placeholder="Votre prénom"
+            className="text-2xl font-display bg-transparent border-b-2 border-[#EDE4D8] focus:border-[#C4622A] outline-none py-2 text-[#1C1C2E] placeholder:text-[#C4B9A8] transition-colors w-full"
+          />
+        </div>
+      )}
+
+      {/* Prénom du sujet (accompagnateur) */}
+      {isAccomp && prenom.trim() && (
+        <div>
+          <p className="text-[#9C8E80] text-xs mb-2">Le prénom de la personne dont vous recueillez l'histoire</p>
+          <input
+            type="text"
+            value={subjectName}
+            onChange={e => setSubjectName(e.target.value)}
+            placeholder="Son prénom"
+            className="text-2xl font-display bg-transparent border-b-2 border-[#EDE4D8] focus:border-[#C4622A] outline-none py-2 text-[#1C1C2E] placeholder:text-[#C4B9A8] transition-colors w-full"
+          />
+        </div>
+      )}
     </div>
   )
 }
@@ -422,6 +530,9 @@ function StepStyle({
         <p className="text-[#9C8E80] text-sm leading-relaxed">
           L'IA a composé trois débuts d'histoire à votre intention.
           Choisissez celui qui vous ressemble.
+        </p>
+        <p className="text-[10px] text-[#C4B9A8] mt-2">
+          ✦ Vos écrits ne servent jamais à entraîner des modèles d'IA.
         </p>
       </div>
 

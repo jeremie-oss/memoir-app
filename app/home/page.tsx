@@ -25,6 +25,7 @@ export default function HomePage() {
   const [transitioning, setTransitioning] = useState(false)
   const [contentVisible, setContentVisible] = useState(true)
   const [activeResource, setActiveResource] = useState(0)
+  const [langPending, setLangPending] = useState<'fr' | 'en' | 'es' | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -226,9 +227,11 @@ export default function HomePage() {
             <p className="font-display text-lg font-light italic text-[#1C1C2E]">{Math.round(progress * 100)}%</p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-[#9C8E80]">{t.dashboard.streak}</p>
+            <p className="text-xs text-[#9C8E80]">
+              {store.lang === 'fr' ? 'Séances écrites' : store.lang === 'es' ? 'Sesiones escritas' : 'Sessions written'}
+            </p>
             <p className="font-display text-xl font-light italic text-[#C4622A]">
-              {store.currentStreak}<span className="text-xs text-[#9C8E80] ml-0.5">{store.lang === 'fr' ? 'j' : 'd'}</span>
+              {store.sessions.length}
             </p>
           </div>
         </div>
@@ -265,18 +268,23 @@ export default function HomePage() {
             {new Date().getFullYear()} · {completedCount}/{totalChapters} {store.lang === 'fr' ? 'chapitres' : 'chapters'}
           </p>
         </div>
-        <div className="flex-1 space-y-1 overflow-hidden">
+        <div className="flex-1 space-y-0.5 overflow-hidden">
           {store.chapters.slice(0, 6).map(ch => {
             const d = getChapterDisplay(ch, store.lang)
             return (
-              <div key={ch.id} className="flex items-center gap-2">
-                <span className={`text-xs flex-shrink-0 ${ch.status === 'done' ? 'text-[#C4622A]' : 'text-[#D4C9BA]'}`}>
-                  {ch.status === 'done' ? '✓' : '○'}
+              <button
+                key={ch.id}
+                onClick={() => router.push(`/write/${ch.id}`)}
+                className={`w-full flex items-center gap-2 rounded-lg px-1.5 py-1 -mx-1.5 transition-all hover:bg-[#1C1C2E]/5 text-left`}
+              >
+                <span className={`text-[10px] flex-shrink-0 font-mono w-4 ${ch.status === 'done' ? 'text-[#C4622A]' : 'text-[#D4C9BA]'}`}>
+                  {ch.status === 'done' ? '✓' : ch.number}
                 </span>
-                <p className={`text-xs truncate ${ch.status === 'done' ? 'text-[#1C1C2E]' : 'text-[#C4B9A8]'}`}>
+                <p className={`text-xs truncate flex-1 ${ch.status === 'done' ? 'text-[#1C1C2E] font-medium' : 'text-[#C4B9A8]'}`}>
                   {d.title}
                 </p>
-              </div>
+                <span className="text-[9px] text-[#C4B9A8]/40 shrink-0">→</span>
+              </button>
             )
           })}
         </div>
@@ -388,7 +396,7 @@ export default function HomePage() {
           {[
             { label: t.dashboard.wordsWritten, value: totalWords.toLocaleString('fr-FR') },
             { label: t.dashboard.sessions,     value: store.sessions.length.toString() },
-            { label: t.dashboard.streak,       value: store.currentStreak > 0 ? t.dashboard.days(store.currentStreak) : '-' },
+            { label: store.lang === 'fr' ? 'Séances écrites' : store.lang === 'es' ? 'Sesiones' : 'Sessions', value: store.sessions.length.toString() },
             { label: store.lang === 'fr' ? 'Chapitres' : 'Chapters', value: `${completedCount}/${totalChapters}` },
           ].map(stat => (
             <div key={stat.label} className="bg-white rounded-xl border border-[#EDE4D8] px-4 py-4">
@@ -482,22 +490,28 @@ export default function HomePage() {
             {store.chapters.map(ch => {
               const d = getChapterDisplay(ch, store.lang)
               return (
-                <div key={ch.id} className="flex items-center justify-between py-2.5 border-b border-[#F5EFE0] last:border-0">
+                <button
+                  key={ch.id}
+                  onClick={() => router.push(`/write/${ch.id}`)}
+                  className="w-full flex items-center justify-between py-2.5 border-b border-[#F5EFE0] last:border-0 hover:bg-[#F5EFE0] -mx-2 px-2 rounded-lg transition-all text-left"
+                >
                   <div className="flex items-center gap-3">
                     <span className={`text-sm flex-shrink-0 ${ch.status === 'done' ? 'text-[#C4622A]' : 'text-[#D4C9BA]'}`}>
-                      {ch.status === 'done' ? '✓' : '○'}
+                      {ch.status === 'done' ? '✓' : ch.number}
                     </span>
                     <div>
                       <p className={`text-sm ${ch.status === 'done' ? 'text-[#1C1C2E] font-medium' : 'text-[#C4B9A8]'}`}>{d.title}</p>
                       <p className="text-xs text-[#9C8E80]">{d.subtitle}</p>
                     </div>
                   </div>
-                  {ch.status === 'done' && (
+                  {ch.status === 'done' ? (
                     <span className="text-xs text-[#9C8E80] flex-shrink-0 ml-4">
                       {store.sessions.find(s => s.chapterId === ch.id)?.wordCount ?? 0} {t.book.words}
                     </span>
+                  ) : (
+                    <span className="text-[10px] text-[#C4B9A8]/60 shrink-0 ml-4">→ Écrire</span>
                   )}
-                </div>
+                </button>
               )
             })}
           </div>
@@ -1098,12 +1112,33 @@ export default function HomePage() {
 
   // Lang toggle
   function LangToggle() {
+    if (langPending) {
+      return (
+        <div className="flex items-center gap-1.5 bg-[#EDE4D8] rounded-full px-3 py-1.5 text-xs">
+          <span className="text-[#7A4F32]">
+            {store.lang === 'fr' ? 'Changer la langue ?' : 'Change language?'}
+          </span>
+          <button
+            onClick={() => { store.setLang(langPending); setLangPending(null) }}
+            className="font-medium text-[#C4622A] hover:underline"
+          >
+            {langPending.toUpperCase()} ✓
+          </button>
+          <button
+            onClick={() => setLangPending(null)}
+            className="text-[#9C8E80] hover:text-[#1C1C2E]"
+          >
+            ✕
+          </button>
+        </div>
+      )
+    }
     return (
       <div className="flex items-center gap-0.5 bg-[#EDE4D8] rounded-full p-0.5">
         {(['fr', 'en', 'es'] as const).map(l => (
           <button
             key={l}
-            onClick={() => store.setLang(l)}
+            onClick={() => l !== store.lang && setLangPending(l)}
             className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
               store.lang === l ? 'bg-[#1C1C2E] text-white' : 'text-[#7A4F32] hover:text-[#1C1C2E]'
             }`}
@@ -1188,18 +1223,29 @@ export default function HomePage() {
             <div className="flex-shrink-0">
               <h1 className="font-display text-3xl md:text-4xl font-light text-[#1C1C2E] italic">{greeting}</h1>
               <p className="text-[#7A4F32] mt-1 text-sm">{sub}</p>
-              {store.sessions.length === 0 && (
-                <p className="text-xs text-[#9C8E80] mt-2 flex items-center gap-1.5">
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#C4622A] animate-pulse" />
-                  {store.lang === 'fr' ? 'Commencez par le panneau Écriture' : 'Start with the Writing panel'}
-                </p>
-              )}
-              {false && (
-                <p className="text-sm text-[#C4622A] mt-2 font-medium animate-pulse">
-                  {t.onboarding.firstChapter}
-                </p>
-              )}
             </div>
+
+            {/* CTA dominant — toujours visible */}
+            {(() => {
+              const next = getNextChapter(store.chapters)
+              if (!next) return null
+              return (
+                <button
+                  onClick={() => router.push(`/write/${next.id}`)}
+                  className="flex-shrink-0 w-full bg-[#1C1C2E] text-[#FAF8F4] rounded-2xl px-5 py-4 flex items-center justify-between hover:bg-[#C4622A] transition-colors group"
+                >
+                  <div className="text-left">
+                    <p className="text-[10px] text-[#FAF8F4]/40 tracking-widest uppercase mb-0.5">
+                      {store.lang === 'fr' ? 'Prochaine séance' : store.lang === 'es' ? 'Próxima sesión' : 'Next session'}
+                    </p>
+                    <p className="font-display text-base italic text-[#FAF8F4]">
+                      {store.lang === 'fr' ? `Chapitre ${next.number} · ${next.title}` : `Chapter ${next.number} · ${next.title}`}
+                    </p>
+                  </div>
+                  <span className="text-[#C4622A] group-hover:text-[#FAF8F4] text-xl transition-colors">✦</span>
+                </button>
+              )
+            })()}
 
             {/* 2×2 Grid */}
             <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1310,6 +1356,28 @@ export default function HomePage() {
               </div>
 
             </div>
+
+            {/* Footer links */}
+            <div className="flex items-center justify-center gap-6 pt-4 pb-2">
+              <button
+                onClick={() => router.push('/quotes')}
+                className="text-[10px] text-[#C4B9A8]/50 hover:text-[#7A4F32] transition-colors tracking-wide flex items-center gap-1.5"
+              >
+                <span className="text-[#C4622A]/40">✦</span>
+                {store.lang === 'fr' ? 'Citations' : store.lang === 'es' ? 'Citas' : 'Quotes'}
+                {store.savedQuotes?.length > 0 && (
+                  <span className="text-[#C4622A]/60">{store.savedQuotes.length}</span>
+                )}
+              </button>
+              <span className="text-[#C4B9A8]/20 text-[10px]">·</span>
+              <button
+                onClick={() => router.push('/privacy')}
+                className="text-[10px] text-[#C4B9A8]/50 hover:text-[#7A4F32] transition-colors tracking-wide"
+              >
+                {store.lang === 'fr' ? 'Confidentialité' : store.lang === 'es' ? 'Privacidad' : 'Privacy'}
+              </button>
+            </div>
+
           </div>
         )}
       </main>

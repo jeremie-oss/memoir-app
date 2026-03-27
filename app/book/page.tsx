@@ -129,7 +129,7 @@ export default function BookPage() {
             <p className="text-xs text-[#9C8E80] tracking-widest uppercase mb-5">Sommaire</p>
             <div className="space-y-1">
               {store.chapters.map((ch) => {
-                const session = store.sessions.find(s => s.chapterId === ch.id)
+                const session = [...store.sessions].reverse().find(s => s.chapterId === ch.id)
                 return (
                   <button
                     key={ch.id}
@@ -176,10 +176,16 @@ export default function BookPage() {
                 {store.sessions.map((session) => {
                   const ch = store.chapters.find(c => c.id === session.chapterId)
                   const isExpanded = expandedChapter === session.chapterId
-                  const preview = session.content.slice(0, 200)
+                  const PREVIEW_LEN = 200
+                  const EXPANDED_LEN = 3000
+                  const displayText = isExpanded
+                    ? session.content.slice(0, EXPANDED_LEN)
+                    : session.content.slice(0, PREVIEW_LEN)
+                  const hasMore = session.content.length > PREVIEW_LEN
+                  const truncatedWhenExpanded = session.content.length > EXPANDED_LEN
 
                   return (
-                    <div key={session.chapterId} className="group">
+                    <div key={`${session.chapterId}-${session.date}`} className="group">
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-display text-sm italic text-[#C4622A]">
                           {ch?.title}
@@ -187,17 +193,27 @@ export default function BookPage() {
                         <span className="text-xs text-[#9C8E80]">{session.wordCount} mots</span>
                       </div>
                       <p className="text-sm text-[#7A4F32] leading-relaxed">
-                        {isExpanded ? session.content : preview}
-                        {!isExpanded && session.content.length > 200 && '…'}
+                        {displayText}
+                        {(!isExpanded && hasMore) || (isExpanded && truncatedWhenExpanded) ? '…' : ''}
                       </p>
-                      {session.content.length > 200 && (
-                        <button
-                          onClick={() => setExpandedChapter(isExpanded ? null : session.chapterId)}
-                          className="text-xs text-[#C4622A] hover:underline mt-2 block"
-                        >
-                          {isExpanded ? 'Réduire' : 'Lire la suite'}
-                        </button>
-                      )}
+                      <div className="flex items-center gap-4 mt-2">
+                        {hasMore && (
+                          <button
+                            onClick={() => setExpandedChapter(isExpanded ? null : session.chapterId)}
+                            className="text-xs text-[#C4622A] hover:underline"
+                          >
+                            {isExpanded ? 'Réduire' : 'Lire la suite'}
+                          </button>
+                        )}
+                        {isExpanded && truncatedWhenExpanded && ch && (
+                          <button
+                            onClick={() => router.push(`/write/${ch.id}`)}
+                            className="text-xs text-[#9C8E80] hover:text-[#7A4F32] transition-colors"
+                          >
+                            Lire et réviser le chapitre complet →
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )
                 })}

@@ -5,6 +5,9 @@ import { useRouter, useParams } from 'next/navigation'
 import { useMemoirStore, type WritingModeId } from '@/stores/memoir'
 import { getSessionMessage, getChapterDisplay } from '@/lib/mock/trame-data'
 import { WRITING_MODES } from '@/lib/i18n'
+import { renderMd } from '@/lib/renderMd'
+import { buildBookState, serializeBookState, getRecentPassages } from '@/lib/ai/book-state'
+import { runArchivisteUpdate, runArchivisteStyle, runRelecteurReview } from '@/lib/ai/archiviste'
 
 type Phase = 'ritual' | 'writing' | 'end'
 type GuidePhase = 'chat' | 'write'
@@ -38,12 +41,12 @@ const WL = {
     micUnsupported: 'Dictée non disponible sur ce navigateur',
     answerPlaceholder: 'Votre réponse…',
     sendAnswer: 'Envoyer →',
-    createDraft: 'Créer mon premier jet →',
-    thinking: 'Je réfléchis…',
+    createDraft: 'Voir ce que ça donne →',
+    thinking: 'L\'IA réfléchit…',
     draftNote: 'Voici votre premier jet - modifiez-le librement',
-    reformulate: '◎  Reformuler',
+    reformulate: '◎  Embellir mon texte',
     reformTitle: 'Votre texte retravaillé',
-    reformDesc: 'Cliquez sur "Utiliser" pour remplacer votre texte.',
+    reformDesc: 'Votre original est conservé. Cliquez sur "Utiliser" pour remplacer.',
     useThis: 'Utiliser ce texte',
     closePanel: 'Fermer',
     inspire: '✦  Inspiration',
@@ -62,6 +65,12 @@ const WL = {
     notesBtn: '✎ Notes',
     notesTitle: 'Notes de révision',
     notesPlaceholder: 'Remarques, pistes à explorer, passages à retravailler…',
+    skipRitual: 'Commencer directement →',
+    changeChapter: '≡ Choisir un chapitre',
+    shortMsg: 'Même quelques mots comptent. Chaque phrase est une trace.',
+    durationHint: 'Recommandé : 15–20 min pour commencer',
+    chapterPickerTitle: 'Vos chapitres',
+    writing: 'En cours',
   },
   en: {
     chapter: 'Chapter',
@@ -84,12 +93,12 @@ const WL = {
     micUnsupported: 'Dictation not available in this browser',
     answerPlaceholder: 'Your answer…',
     sendAnswer: 'Send →',
-    createDraft: 'Create my first draft →',
-    thinking: 'Thinking…',
+    createDraft: 'See what this gives →',
+    thinking: 'AI thinking…',
     draftNote: 'Here is your first draft - edit it freely',
-    reformulate: '◎  Rewrite',
+    reformulate: '◎  Beautify my text',
     reformTitle: 'Your rewritten text',
-    reformDesc: 'Click "Use this" to replace your text.',
+    reformDesc: 'Your original is preserved. Click "Use this" to replace.',
     useThis: 'Use this text',
     closePanel: 'Close',
     inspire: '✦  Inspire me',
@@ -108,6 +117,12 @@ const WL = {
     notesBtn: '✎ Notes',
     notesTitle: 'Revision notes',
     notesPlaceholder: 'Remarks, passages to develop, questions to check…',
+    skipRitual: 'Start writing →',
+    changeChapter: '≡ Choose a chapter',
+    shortMsg: 'Even a few words count. Every sentence is a trace.',
+    durationHint: 'Recommended: 15–20 min to start',
+    chapterPickerTitle: 'Your chapters',
+    writing: 'Current',
   },
   es: {
     chapter: 'Capítulo',
@@ -130,12 +145,12 @@ const WL = {
     micUnsupported: 'Dictado no disponible en este navegador',
     answerPlaceholder: 'Tu respuesta…',
     sendAnswer: 'Enviar →',
-    createDraft: 'Crear mi primer borrador →',
-    thinking: 'Pensando…',
+    createDraft: 'Ver qué sale →',
+    thinking: 'La IA piensa…',
     draftNote: 'Aquí está tu primer borrador - edítalo libremente',
-    reformulate: '◎  Reformular',
+    reformulate: '◎  Embellecer mi texto',
     reformTitle: 'Tu texto reescrito',
-    reformDesc: 'Haz clic en "Usar" para reemplazar tu texto.',
+    reformDesc: 'Tu original está conservado. Haz clic en "Usar" para reemplazar.',
     useThis: 'Usar este texto',
     closePanel: 'Cerrar',
     inspire: '✦  Inspiración',
@@ -154,6 +169,12 @@ const WL = {
     notesBtn: '✎ Notas',
     notesTitle: 'Notas de revisión',
     notesPlaceholder: 'Observaciones, pasajes a desarrollar, preguntas…',
+    skipRitual: 'Empezar directamente →',
+    changeChapter: '≡ Elegir un capítulo',
+    shortMsg: 'Hasta pocas palabras cuentan. Cada frase es una huella.',
+    durationHint: 'Recomendado: 15–20 min para empezar',
+    chapterPickerTitle: 'Sus capítulos',
+    writing: 'En curso',
   },
 }
 
@@ -165,6 +186,24 @@ function getModeText(id: WriteModeId, lang: 'fr' | 'en' | 'es') {
   if (lang === 'fr') return WRITING_MODES[id].fr
   if (lang === 'es') return WRITING_MODES[id].es
   return WRITING_MODES[id].en
+}
+
+const MODE_META: Record<WriteModeId, {
+  badge: { fr: string; en: string; es: string } | null
+  duration: { fr: string; en: string; es: string }
+}> = {
+  libre: {
+    badge: { fr: 'Pour les écrivains', en: 'For writers', es: 'Para escritores' },
+    duration: { fr: '~10–30 min', en: '~10–30 min', es: '~10–30 min' },
+  },
+  guide: {
+    badge: { fr: 'Pour commencer', en: 'To get started', es: 'Para empezar' },
+    duration: { fr: '~20–30 min', en: '~20–30 min', es: '~20–30 min' },
+  },
+  dicte: {
+    badge: null,
+    duration: { fr: '~15–45 min', en: '~15–45 min', es: '~15–45 min' },
+  },
 }
 
 function formatTime(totalSeconds: number): string {
@@ -233,6 +272,15 @@ export default function WritePage() {
   // Save error feedback
   const [saveError, setSaveError] = useState(false)
 
+  // Chapter picker
+  const [showChapterPicker, setShowChapterPicker] = useState(false)
+
+  // Mode sans IA (Mode concentré)
+  const [noAI, setNoAI] = useState(false)
+
+  // Guide annotations (4.3)
+  const [showGuideAnnotations, setShowGuideAnnotations] = useState(false)
+
   // End: email capture
   const [emailInput, setEmailInput] = useState('')
   const [emailCaptured, setEmailCaptured] = useState(false)
@@ -246,6 +294,8 @@ export default function WritePage() {
   const lang = store.lang
   const wl = WL[lang]
   const modes = Object.values(WRITING_MODES)
+  const isAccomp = store.profile.role === 'accompagnateur'
+  const subjectName = store.profile.subjectName || (lang === 'fr' ? 'elle' : lang === 'es' ? 'ella' : 'them')
 
   // Redirect if chapter not found
   useEffect(() => {
@@ -396,13 +446,32 @@ export default function WritePage() {
   }
 
   // ── Guide mode ───────────────────────────────────────────────
+
+  // Construit le contexte Book State pour les agents (mémoïsable inline)
+  function getBookContext() {
+    const bs = buildBookState(store)
+    return {
+      bookStateText: serializeBookState(bs),
+      emptyChapters: bs.chapters.filter(c => c.wordCount === 0).map(c => c.title),
+      gaps: bs.gaps.filter(g => g.priority === 'high').map(g => g.description),
+      sessionSummaries: bs.sessionSummaries.map(s => `[${s.chapterTitle}] ${s.excerpt}`),
+    }
+  }
+
   async function startGuide() {
+    const { bookStateText, emptyChapters, gaps, sessionSummaries } = getBookContext()
     const question = await streamAI({
       action: 'guide_question',
       chapter: { title: chapter!.title, theme: chapter!.theme, prompt: chapter!.prompt },
       userName: store.userName,
       lang,
       conversation: [],
+      isAccomp,
+      subjectName: isAccomp ? subjectName : undefined,
+      bookStateText,
+      emptyChapters,
+      gaps,
+      sessionSummaries,
     })
     if (question) setGuideConvo([{ role: 'assistant', content: question }])
   }
@@ -413,24 +482,37 @@ export default function WritePage() {
     setGuideInput('')
     const newConvo: ConvoMsg[] = [...guideConvo, { role: 'user', content: answer }]
     setGuideConvo(newConvo)
+    const { bookStateText, emptyChapters, gaps, sessionSummaries } = getBookContext()
     const question = await streamAI({
       action: 'guide_question',
       chapter: { title: chapter!.title, theme: chapter!.theme, prompt: chapter!.prompt },
       userName: store.userName,
       lang,
       conversation: newConvo,
+      isAccomp,
+      subjectName: isAccomp ? subjectName : undefined,
+      bookStateText,
+      emptyChapters,
+      gaps,
+      sessionSummaries,
     })
     if (question) setGuideConvo([...newConvo, { role: 'assistant', content: question }])
   }
 
   async function generateGuideDraft() {
     if (aiLoading) return
+    const previousPassages = getRecentPassages(store, 3)
     const draft = await streamAI({
       action: 'guide_generate',
       chapter: { title: chapter!.title, theme: chapter!.theme, prompt: chapter!.prompt },
       userName: store.userName,
       lang,
       conversation: guideConvo,
+      isAccomp,
+      subjectName: isAccomp ? subjectName : undefined,
+      styleFingerprint: store.styleFingerprint,
+      previousPassages,
+      characters: store.characters,
     })
     if (draft) {
       setContent(draft)
@@ -450,6 +532,8 @@ export default function WritePage() {
       userName: store.userName,
       lang,
       content,
+      isAccomp,
+      subjectName: isAccomp ? subjectName : undefined,
     })
     setReformText(result)
   }
@@ -571,6 +655,47 @@ export default function WritePage() {
         // Always save locally and navigate (local save is the safety net)
         try { localStorage.removeItem(draftKey) } catch {}
         store.saveSession({ chapterId, wordCount, content, notes: chapterNotes, date: new Date().toISOString() })
+
+        // Fire-and-forget: agents run asynchronously after save, never block navigation
+        const savedStore = store // capture stable ref
+        const savedLang = lang
+        const savedContent = content
+
+        // Archiviste: update Book State with new characters, events, contradictions
+        runArchivisteUpdate(savedStore, savedContent, savedLang).then(result => {
+          if (!result) return
+          result.characters.forEach(c => {
+            const exists = savedStore.characters.some(ch => ch.name.toLowerCase() === c.name.toLowerCase())
+            if (!exists) savedStore.addCharacter({ name: c.name, relation: c.relation, period: c.period, notes: '' })
+          })
+          result.events.forEach(e => {
+            const exists = savedStore.timelineEvents.some(ev => ev.title.toLowerCase() === e.title.toLowerCase())
+            if (!exists) savedStore.addTimelineEvent({ date: e.date, title: e.title, description: e.description })
+          })
+        })
+
+        // Relecteur: review new passage in context of whole book
+        runRelecteurReview(savedStore, savedContent, chapterId, savedLang).then(result => {
+          if (!result?.reviews?.length) return
+          result.reviews.forEach(r => {
+            savedStore.addAgentSuggestion({
+              agentId: 'relecteur',
+              type: r.type,
+              passage: r.passage,
+              explication: r.explication,
+              suggestion: r.suggestion,
+              chapterId,
+            })
+          })
+        })
+
+        // Archiviste style: extract style fingerprint after 2+ sessions
+        if (savedStore.sessions.length >= 1 && !savedStore.styleFingerprint) {
+          runArchivisteStyle(savedStore, savedLang).then(fingerprint => {
+            if (fingerprint) savedStore.setStyleFingerprint(fingerprint)
+          })
+        }
+
         setTimeout(() => router.push('/home'), 400)
       })
   }
@@ -627,9 +752,35 @@ export default function WritePage() {
           <div className="absolute w-80 h-80 rounded-full bg-[#C4622A] opacity-[0.04] blur-3xl top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
 
           <div className="max-w-xl w-full text-center relative z-10">
-            <p className="text-xs text-[#7A4F32] tracking-widest uppercase mb-8">
-              {wl.chapter} {chapter.number} · {chapter.title}
-            </p>
+            <div className="flex items-center justify-center gap-3 mb-8">
+              <p className="text-xs text-[#7A4F32] tracking-widest uppercase">
+                {isAccomp
+                  ? (lang === 'fr' ? `Pour ${subjectName} · ` : lang === 'es' ? `Para ${subjectName} · ` : `For ${subjectName} · `)
+                  : ''}
+                {wl.chapter} {chapter.number} · {chapter.title}
+              </p>
+              <button
+                onClick={() => setShowChapterPicker(true)}
+                className="text-[9px] text-[#9C8E80]/30 hover:text-[#9C8E80]/70 transition-colors tracking-wide"
+              >
+                {wl.changeChapter}
+              </button>
+            </div>
+
+            {isAccomp && (
+              <div className="mb-6 mx-auto max-w-sm bg-[#FAF8F4]/5 rounded-2xl px-5 py-3 border border-[#FAF8F4]/10">
+                <p className="text-[10px] text-[#9C8E80]/50 tracking-widest uppercase mb-1">
+                  {lang === 'fr' ? 'Mode accompagnateur' : lang === 'es' ? 'Modo acompañante' : 'Guide mode'}
+                </p>
+                <p className="text-xs text-[#FAF8F4]/60 leading-relaxed italic">
+                  {lang === 'fr'
+                    ? `Posez les questions à ${subjectName}, notez ses réponses, laissez l'IA composer.`
+                    : lang === 'es'
+                    ? `Haz las preguntas a ${subjectName}, anota sus respuestas, deja que la IA componga.`
+                    : `Ask ${subjectName} the questions, note their answers, let the AI compose.`}
+                </p>
+              </div>
+            )}
 
             <blockquote className="font-display text-2xl md:text-3xl italic text-[#FAF8F4] leading-relaxed mb-4">
               &ldquo;{chapter.quote}&rdquo;
@@ -655,19 +806,31 @@ export default function WritePage() {
                 {modes.map((m) => {
                   const ml = getModeText(m.id, lang)
                   const isSelected = mode === m.id
+                  const meta = MODE_META[m.id as WriteModeId]
                   return (
-                    <button
-                      key={m.id}
-                      onClick={() => setMode(m.id)}
-                      className={`flex flex-col items-center gap-2 px-5 py-4 rounded-2xl border transition-all w-28 ${
-                        isSelected
-                          ? 'bg-[#C4622A] border-[#C4622A] text-white'
-                          : 'bg-[#FAF8F4]/5 border-[#FAF8F4]/10 text-[#FAF8F4]/50 hover:border-[#FAF8F4]/30 hover:text-[#FAF8F4]/70'
-                      }`}
-                    >
-                      <span className="text-xl">{m.icon}</span>
-                      <p className="text-xs font-medium leading-tight text-center">{ml.label}</p>
-                    </button>
+                    <div key={m.id} className="flex flex-col items-center gap-1.5">
+                      {meta.badge ? (
+                        <span className={`text-[9px] tracking-wide px-2 py-0.5 rounded-full font-medium transition-all ${
+                          isSelected ? 'bg-[#FAF8F4]/20 text-[#FAF8F4]' : 'bg-[#FAF8F4]/5 text-[#9C8E80]/60'
+                        }`}>
+                          {meta.badge[lang]}
+                        </span>
+                      ) : <span className="h-[18px]" />}
+                      <button
+                        onClick={() => setMode(m.id)}
+                        className={`flex flex-col items-center gap-2 px-5 py-4 rounded-2xl border transition-all w-28 ${
+                          isSelected
+                            ? 'bg-[#C4622A] border-[#C4622A] text-white'
+                            : 'bg-[#FAF8F4]/5 border-[#FAF8F4]/10 text-[#FAF8F4]/50 hover:border-[#FAF8F4]/30 hover:text-[#FAF8F4]/70'
+                        }`}
+                      >
+                        <span className="text-xl">{m.icon}</span>
+                        <p className="text-xs font-medium leading-tight text-center">{ml.label}</p>
+                      </button>
+                      <span className={`text-[9px] transition-all ${isSelected ? 'text-[#9C8E80]/70' : 'text-[#9C8E80]/30'}`}>
+                        {meta.duration[lang]}
+                      </span>
+                    </div>
                   )
                 })}
               </div>
@@ -696,6 +859,26 @@ export default function WritePage() {
                   </button>
                 ))}
               </div>
+              {sessionDuration === 0 && (
+                <p className="text-[9px] text-[#9C8E80]/25 mt-2 italic">{wl.durationHint}</p>
+              )}
+            </div>
+
+            {/* Mode concentré toggle */}
+            <div className="mb-6">
+              <button
+                onClick={() => setNoAI(!noAI)}
+                className={`flex items-center gap-2 mx-auto text-xs transition-colors ${
+                  noAI ? 'text-[#FAF8F4]/60' : 'text-[#9C8E80]/30 hover:text-[#9C8E80]/60'
+                }`}
+              >
+                <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all ${
+                  noAI ? 'border-[#FAF8F4]/40 bg-[#FAF8F4]/10' : 'border-[#9C8E80]/20'
+                }`}>
+                  {noAI && <span className="w-1.5 h-1.5 rounded-full bg-[#FAF8F4]/60" />}
+                </span>
+                {lang === 'fr' ? 'Mode concentré — sans IA' : lang === 'es' ? 'Modo concentrado — sin IA' : 'Focused mode — no AI'}
+              </button>
             </div>
 
             <button
@@ -708,13 +891,64 @@ export default function WritePage() {
               </svg>
             </button>
 
+            {store.sessions.length > 0 && (
+              <button
+                onClick={() => {
+                  store.setWritingMode(mode)
+                  setFadeIn(false)
+                  setTimeout(() => { setPhase('writing'); setFadeIn(true); startTimer(); setTimeout(() => textareaRef.current?.focus(), 100) }, 450)
+                }}
+                className="block mt-3 mx-auto text-xs text-[#C4622A]/40 hover:text-[#C4622A]/80 transition-colors"
+              >
+                {wl.skipRitual}
+              </button>
+            )}
+
             <button
               onClick={() => router.push('/home')}
-              className="block mt-6 mx-auto text-xs text-[#9C8E80]/40 hover:text-[#9C8E80] transition-colors"
+              className="block mt-4 mx-auto text-xs text-[#9C8E80]/30 hover:text-[#9C8E80] transition-colors"
             >
               {wl.backHome}
             </button>
           </div>
+
+          {/* Chapter picker panel */}
+          {showChapterPicker && (
+            <div className="fixed inset-0 z-50 flex flex-col justify-end">
+              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowChapterPicker(false)} />
+              <div className="relative bg-[#1C1C2E] rounded-t-3xl px-6 pt-6 pb-8 max-h-[70vh] flex flex-col">
+                <div className="pointer-events-none absolute inset-0 opacity-[0.03] rounded-t-3xl" style={GRAIN} />
+                <div className="flex items-center justify-between mb-5">
+                  <p className="text-sm font-display italic text-[#FAF8F4]">{wl.chapterPickerTitle}</p>
+                  <button onClick={() => setShowChapterPicker(false)} className="text-sm text-[#9C8E80]/50 hover:text-[#9C8E80]">✕</button>
+                </div>
+                <div className="overflow-y-auto space-y-2 flex-1">
+                  {store.chapters.map(ch => {
+                    const d = getChapterDisplay(ch, store.lang)
+                    const isCurrent = ch.id === chapterId
+                    return (
+                      <button
+                        key={ch.id}
+                        onClick={() => { setShowChapterPicker(false); router.push(`/write/${ch.id}`) }}
+                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-left transition-all ${
+                          isCurrent ? 'bg-[#C4622A]/20 border border-[#C4622A]/30' : 'bg-[#FAF8F4]/5 hover:bg-[#FAF8F4]/10 border border-transparent'
+                        }`}
+                      >
+                        <span className={`text-sm flex-shrink-0 font-mono w-5 ${ch.status === 'done' ? 'text-[#C4622A]' : 'text-[#9C8E80]/40'}`}>
+                          {ch.status === 'done' ? '✓' : ch.number}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-medium truncate ${isCurrent ? 'text-[#FAF8F4]' : ch.status === 'done' ? 'text-[#FAF8F4]/80' : 'text-[#9C8E80]'}`}>{d.title}</p>
+                          <p className="text-[10px] text-[#9C8E80]/50 truncate">{d.subtitle}</p>
+                        </div>
+                        {isCurrent && <span className="text-[9px] text-[#C4622A] shrink-0 tracking-wide">{wl.writing}</span>}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
         </main>
       )}
 
@@ -761,13 +995,13 @@ export default function WritePage() {
                     className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
-                      className={`max-w-[80%] rounded-2xl px-5 py-3.5 text-sm leading-relaxed ${
+                      className={`max-w-[80%] rounded-2xl px-5 py-3.5 text-sm leading-relaxed break-words ${
                         msg.role === 'assistant'
                           ? 'bg-[#FAF8F4]/8 text-[#FAF8F4] rounded-tl-sm font-display italic text-base'
                           : 'bg-[#C4622A]/20 text-[#EDE4D8] rounded-tr-sm border border-[#C4622A]/20'
                       }`}
                     >
-                      {msg.content}
+                      {renderMd(msg.content)}
                     </div>
                   </div>
                 ))}
@@ -775,14 +1009,15 @@ export default function WritePage() {
                 {/* Streaming AI response */}
                 {(aiLoading || aiStreaming) && (
                   <div className="flex justify-start">
-                    <div className="max-w-[80%] bg-[#FAF8F4]/8 text-[#FAF8F4] rounded-2xl rounded-tl-sm px-5 py-3.5 font-display italic text-base leading-relaxed">
+                    <div className="max-w-[80%] bg-[#FAF8F4]/8 text-[#FAF8F4] rounded-2xl rounded-tl-sm px-5 py-3.5 font-display italic text-base leading-relaxed break-words">
                       {aiLoading && !aiStreaming ? (
-                        <span className="inline-flex gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#9C8E80] animate-bounce" style={{ animationDelay: '0ms' }} />
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#9C8E80] animate-bounce" style={{ animationDelay: '150ms' }} />
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#9C8E80] animate-bounce" style={{ animationDelay: '300ms' }} />
+                        <span className="inline-flex flex-col gap-2 w-36">
+                          <span className="text-xs text-[#9C8E80]/70 not-italic font-sans">{wl.thinking}</span>
+                          <span className="block h-0.5 w-full bg-[#FAF8F4]/10 rounded-full overflow-hidden">
+                            <span className="block h-full bg-[#C4622A]/50 rounded-full animate-[loading_1.5s_ease-in-out_infinite]" style={{ width: '60%', animation: 'pulse 1.5s ease-in-out infinite' }} />
+                          </span>
                         </span>
-                      ) : aiStreaming}
+                      ) : renderMd(aiStreaming)}
                     </div>
                   </div>
                 )}
@@ -853,7 +1088,13 @@ export default function WritePage() {
 
               {/* Header */}
               <header className="flex items-center justify-between px-6 py-4 shrink-0">
-                <span className="font-display text-sm italic text-[#7A4F32]">{chapter.title}</span>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <button onClick={() => router.push('/home')} className="text-[10px] text-[#C4B9A8] hover:text-[#9C8E80] transition-colors shrink-0">
+                    {lang === 'fr' ? 'Accueil' : lang === 'es' ? 'Inicio' : 'Home'}
+                  </button>
+                  <span className="text-[#C4B9A8] text-[10px]">/</span>
+                  <span className="font-display text-sm italic text-[#7A4F32] truncate">{chapter.title}</span>
+                </div>
 
                 {/* Timer */}
                 <span className={`text-xs tabular-nums transition-colors ${
@@ -875,12 +1116,49 @@ export default function WritePage() {
                 </button>
               </header>
 
-              {/* Guide draft note */}
+              {/* Word target progress bar */}
+              <div className="px-6 pb-1 max-w-2xl mx-auto w-full">
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-px bg-[#EDE4D8] rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-[#C4622A]/50 rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(100, (wordCount / 150) * 100)}%` }}
+                    />
+                  </div>
+                  {wordCount > 0 && (
+                    <span className={`text-[9px] tabular-nums shrink-0 transition-colors ${wordCount >= 150 ? 'text-[#C4622A]' : 'text-[#C4B9A8]'}`}>
+                      {wordCount >= 150 ? `${wordCount} ✓` : `${wordCount}/150`}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Guide annotations (4.3) */}
               {mode === 'guide' && guidePhase === 'write' && (
                 <div className="px-6 pb-3 max-w-2xl mx-auto w-full">
-                  <p className="text-xs text-[#7A4F32] italic tracking-wide border-l-2 border-[#C4622A]/30 pl-3">
-                    {wl.draftNote}
-                  </p>
+                  <button
+                    onClick={() => setShowGuideAnnotations((v) => !v)}
+                    className="flex items-center gap-2 text-[10px] text-[#7A4F32]/70 hover:text-[#7A4F32] transition-colors group"
+                  >
+                    <span className="text-[#C4622A]/50 group-hover:text-[#C4622A]/80">✦</span>
+                    <span className="italic">
+                      {lang === 'fr'
+                        ? `Composé à partir de vos ${userAnswerCount} réponse${userAnswerCount > 1 ? 's' : ''}`
+                        : lang === 'es'
+                        ? `Compuesto a partir de sus ${userAnswerCount} respuesta${userAnswerCount > 1 ? 's' : ''}`
+                        : `Composed from your ${userAnswerCount} answer${userAnswerCount > 1 ? 's' : ''}`}
+                    </span>
+                    <span className="text-[#C4B9A8]/50">{showGuideAnnotations ? '↑' : '↓'}</span>
+                  </button>
+                  {showGuideAnnotations && (
+                    <div className="mt-2 border-l-2 border-[#C4622A]/20 pl-3 space-y-2">
+                      {guideConvo.filter((m) => m.role === 'user').map((m, i) => (
+                        <p key={i} className="text-[10px] text-[#9C8E80] leading-relaxed italic">
+                          &ldquo;{m.content}&rdquo;
+                        </p>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -943,6 +1221,11 @@ export default function WritePage() {
                   {/* Dictée: voice + reformulate */}
                   {mode === 'dicte' && (
                     <>
+                      {noAI && (
+                        <span className="text-[9px] text-[#9C8E80]/50 tracking-wide">
+                          {lang === 'fr' ? '✍ Mode concentré' : lang === 'es' ? '✍ Modo concentrado' : '✍ Focused'}
+                        </span>
+                      )}
                       <button
                         onClick={toggleVoice}
                         title={micError ? wl.micUnsupported : isListening ? wl.micStop : wl.micStart}
@@ -954,9 +1237,13 @@ export default function WritePage() {
                             : 'border-[#C4B9A8] text-[#9C8E80] hover:border-[#C4622A] hover:text-[#C4622A]'
                         }`}
                       >
-                        {isListening ? wl.micStop : wl.micStart}
+                        {isListening
+                          ? wl.micStop
+                          : isAccomp
+                          ? (lang === 'fr' ? `◎  Dicter les mots de ${subjectName}` : lang === 'es' ? `◎  Dictar las palabras de ${subjectName}` : `◎  Dictate ${subjectName}'s words`)
+                          : wl.micStart}
                       </button>
-                      {wordCount >= 5 && (
+                      {wordCount >= 5 && !noAI && (
                         <button
                           onClick={reformulate}
                           disabled={aiLoading}
@@ -969,7 +1256,7 @@ export default function WritePage() {
                   )}
 
                   {/* Libre: inspire */}
-                  {mode === 'libre' && (
+                  {mode === 'libre' && !noAI && (
                     <button
                       onClick={inspire}
                       disabled={aiLoading}
@@ -977,6 +1264,11 @@ export default function WritePage() {
                     >
                       {aiLoading && !showInspire ? wl.thinking : wl.inspire}
                     </button>
+                  )}
+                  {mode === 'libre' && noAI && (
+                    <span className="text-[9px] text-[#9C8E80]/40 tracking-wide">
+                      {lang === 'fr' ? '✍ Mode concentré' : lang === 'es' ? '✍ Modo concentrado' : '✍ Focused'}
+                    </span>
                   )}
 
                   {wordCount >= 5 && (
@@ -1015,15 +1307,18 @@ export default function WritePage() {
                     <p className="text-xs text-[#9C8E80]/50 mb-4">{wl.reformDesc}</p>
                     <div className="flex-1 overflow-y-auto mb-5 pr-1">
                       {(aiLoading && !reformText) ? (
-                        <div className="flex gap-1 items-center py-4">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#9C8E80] animate-bounce" style={{ animationDelay: '0ms' }} />
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#9C8E80] animate-bounce" style={{ animationDelay: '150ms' }} />
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#9C8E80] animate-bounce" style={{ animationDelay: '300ms' }} />
+                        <div className="flex flex-col gap-2 py-4">
+                          <p className="text-xs text-[#9C8E80]/70">{wl.thinking}</p>
+                          <div className="h-0.5 w-full bg-[#FAF8F4]/10 rounded-full overflow-hidden">
+                            <div className="h-full bg-[#C4622A]/40 rounded-full" style={{ width: '50%', animation: 'pulse 1.5s ease-in-out infinite' }} />
+                          </div>
                         </div>
                       ) : (
-                        <p className="text-[#FAF8F4] text-sm leading-relaxed font-display italic">
-                          {reformText || aiStreaming}
-                        </p>
+                        <textarea
+                          value={reformText || aiStreaming}
+                          onChange={(e) => setReformText(e.target.value)}
+                          className="w-full bg-transparent resize-none outline-none text-[#FAF8F4] text-sm leading-relaxed font-display italic min-h-[120px]"
+                        />
                       )}
                     </div>
                     <button
@@ -1059,10 +1354,11 @@ export default function WritePage() {
                     </div>
                     <div className="flex-1 overflow-y-auto mb-5">
                       {(aiLoading && !inspireText) ? (
-                        <div className="flex gap-1 items-center py-4">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#9C8E80] animate-bounce" style={{ animationDelay: '0ms' }} />
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#9C8E80] animate-bounce" style={{ animationDelay: '150ms' }} />
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#9C8E80] animate-bounce" style={{ animationDelay: '300ms' }} />
+                        <div className="flex flex-col gap-2 py-4">
+                          <p className="text-xs text-[#9C8E80]/70">{wl.thinking}</p>
+                          <div className="h-0.5 w-full bg-[#EDE4D8] rounded-full overflow-hidden">
+                            <div className="h-full bg-[#C4622A]/50 rounded-full" style={{ width: '40%', animation: 'pulse 1.5s ease-in-out infinite' }} />
+                          </div>
                         </div>
                       ) : (
                         <p className="font-display text-xl italic text-[#1C1C2E] leading-relaxed">
@@ -1119,6 +1415,14 @@ export default function WritePage() {
             </main>
           )}
 
+          {/* AI model indicator */}
+          {(aiLoading || !!aiStreaming) && (
+            <div className="fixed bottom-20 left-4 z-50 flex items-center gap-1.5 bg-[#1C1C2E]/80 backdrop-blur-sm text-[#9C8E80]/70 text-[9px] px-2.5 py-1 rounded-full pointer-events-none">
+              <span className="w-1 h-1 rounded-full bg-[#C4622A] animate-pulse" />
+              claude-haiku
+            </div>
+          )}
+
           {/* Streaming overlay for guide draft generation */}
           {mode === 'guide' && guidePhase === 'chat' && displayStreaming && (
             <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-[#FAF8F4]/10 backdrop-blur-sm border border-white/10 text-[#FAF8F4] text-xs px-4 py-2 rounded-full pointer-events-none">
@@ -1151,7 +1455,7 @@ export default function WritePage() {
             )}
 
             <p className="font-display text-xl italic text-[#7A4F32] leading-relaxed mb-12 px-4">
-              {sessionMsg}
+              {wordCount < 50 ? wl.shortMsg : sessionMsg}
             </p>
 
             <div className="bg-white rounded-2xl border border-[#EDE4D8] px-5 py-4 mb-5 text-left">
@@ -1159,11 +1463,24 @@ export default function WritePage() {
               <p className="font-display text-lg italic text-[#1C1C2E]">{chapter.title}</p>
             </div>
 
+            {/* Save confirmation */}
+            <div className="flex items-center justify-center gap-1.5 mb-4">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#C4622A]/60" />
+              <p className="text-xs text-[#9C8E80]">
+                {store.lang === 'fr' ? 'Votre texte est en sécurité' : store.lang === 'es' ? 'Tu texto está a salvo' : 'Your text is safe'}
+              </p>
+            </div>
+
             {/* Email capture */}
             <div className="mb-5">
               {!emailCaptured ? (
                 <div className="bg-[#FAF8F4] border border-[#EDE4D8] rounded-2xl px-5 py-4">
-                  <p className="text-xs text-[#9C8E80] tracking-wide mb-3">{wl.captureTitle}</p>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs text-[#9C8E80] tracking-wide">{wl.captureTitle}</p>
+                    <span className="text-[10px] text-[#C4B9A8] italic">
+                      {store.lang === 'fr' ? '— optionnel' : store.lang === 'es' ? '— opcional' : '— optional'}
+                    </span>
+                  </div>
                   <div className="flex gap-2">
                     <input
                       type="email"

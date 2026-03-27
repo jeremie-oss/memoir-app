@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { TRAME_CHAPTERS, type TrameChapter } from '@/lib/mock/trame-data'
+import type { BookGap, AgentSuggestion } from '@/lib/ai/book-state'
 
 export type WritingSession = {
   chapterId: string
@@ -52,6 +53,8 @@ export type OnboardingProfile = {
   styleExtrait: string       // extrait IA choisi
   frequence: '' | 'quotidien' | 'hebdo' | 'libre'
   duree: 0 | 15 | 30 | 45
+  role: '' | 'auteur' | 'accompagnateur'  // auteur = j'écris / accompagnateur = j'aide quelqu'un
+  subjectName: string                      // prénom du sujet (mode accompagnateur)
 }
 
 export type MemoirState = {
@@ -110,6 +113,14 @@ export type MemoirState = {
   // Notes de recherche
   researchNotes: ResearchNote[]
 
+  // Citations sauvegardées (7.2)
+  savedQuotes: string[]
+
+  // Agents — Book State enrichi
+  styleFingerprint?: string           // empreinte stylistique extraite par l'Archiviste
+  bookGaps: BookGap[]                 // lacunes détectées (chapitres, personnages, chronologie)
+  agentSuggestions: AgentSuggestion[] // suggestions Relecteur / Architecte en attente
+
   // Actions
   setLang: (lang: 'fr' | 'en' | 'es') => void
   setWritingMode: (mode: WritingModeId) => void
@@ -137,6 +148,13 @@ export type MemoirState = {
   addTimelineEvent: (e: Omit<TimelineEvent, 'id'>) => void
   updateTimelineEvent: (id: string, updates: Partial<Omit<TimelineEvent, 'id'>>) => void
   removeTimelineEvent: (id: string) => void
+  toggleSavedQuote: (text: string) => void
+  // Agent actions
+  setStyleFingerprint: (fingerprint: string) => void
+  setBookGaps: (gaps: BookGap[]) => void
+  addAgentSuggestion: (s: Omit<AgentSuggestion, 'id' | 'dismissed' | 'date'>) => void
+  dismissSuggestion: (id: string) => void
+  clearDismissedSuggestions: () => void
   loadDemoState: (name?: string) => void
   resetAll: () => void
 }
@@ -149,6 +167,8 @@ const defaultProfile: OnboardingProfile = {
   styleExtrait: '',
   frequence: '',
   duree: 0,
+  role: '',
+  subjectName: '',
 }
 
 function generateId(): string {
@@ -180,6 +200,10 @@ const initialState = {
   characters: [] as Character[],
   timelineEvents: [] as TimelineEvent[],
   researchNotes: [] as ResearchNote[],
+  savedQuotes: [] as string[],
+  styleFingerprint: undefined as string | undefined,
+  bookGaps: [] as BookGap[],
+  agentSuggestions: [] as AgentSuggestion[],
 }
 
 export const useMemoirStore = create<MemoirState>()(
@@ -232,8 +256,14 @@ export const useMemoirStore = create<MemoirState>()(
           newStreak = 1
         }
 
+        // Upsert: replace existing session for same chapter (revision), don't duplicate
+        const existingIdx = sessions.findIndex(s => s.chapterId === session.chapterId)
+        const updatedSessions = existingIdx >= 0
+          ? sessions.map((s, i) => i === existingIdx ? session : s)
+          : [...sessions, session]
+
         set({
-          sessions: [...sessions, session],
+          sessions: updatedSessions,
           chapters: updatedChapters,
           currentStreak: newStreak,
           lastWrittenDate: today,
@@ -310,6 +340,43 @@ export const useMemoirStore = create<MemoirState>()(
       removeTimelineEvent: (id) =>
         set((s) => ({ timelineEvents: s.timelineEvents.filter((ev) => ev.id !== id) })),
 
+      toggleSavedQuote: (text) =>
+        set((s) => ({
+          savedQuotes: s.savedQuotes.includes(text)
+            ? s.savedQuotes.filter((q) => q !== text)
+            : [...s.savedQuotes, text],
+        })),
+
+      // Agent actions
+      setStyleFingerprint: (fingerprint) => set({ styleFingerprint: fingerprint }),
+
+      setBookGaps: (gaps) => set({ bookGaps: gaps }),
+
+      addAgentSuggestion: (s) =>
+        set((state) => ({
+          agentSuggestions: [
+            ...state.agentSuggestions,
+            {
+              ...s,
+              id: `sug-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+              dismissed: false,
+              date: new Date().toISOString(),
+            },
+          ],
+        })),
+
+      dismissSuggestion: (id) =>
+        set((s) => ({
+          agentSuggestions: s.agentSuggestions.map((sg) =>
+            sg.id === id ? { ...sg, dismissed: true } : sg
+          ),
+        })),
+
+      clearDismissedSuggestions: () =>
+        set((s) => ({
+          agentSuggestions: s.agentSuggestions.filter((sg) => !sg.dismissed),
+        })),
+
       loadDemoState: (name = 'Marie') => {
         const today = new Date().toISOString().split('T')[0]
         const d1 = new Date(Date.now() - 86400000).toISOString().split('T')[0]
@@ -329,6 +396,8 @@ export const useMemoirStore = create<MemoirState>()(
             styleExtrait: 'Je suis né dans une maison qui sentait la cire et la lavande.',
             frequence: 'hebdo',
             duree: 30,
+            role: 'auteur',
+            subjectName: '',
           },
           onboardingAnswers: {
             why: 'Laisser une trace à mes proches',
