@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "memoir-dev",
+      "runtimeExecutable": "/Users/jeremiebenhamou/.nvm/versions/node/v22.22.1/bin/npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "/Users/jeremiebenhamou/Desktop/memoir-app",
+      "port": 3000
+    }
+  ]
+}
