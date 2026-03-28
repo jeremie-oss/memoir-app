@@ -21,6 +21,7 @@ const i18n: Record<Lang, Record<string, string>> = {
     'login.loading': 'Connexion...',
     'login.no_account': 'Pas encore de compte ?',
     'login.request_access': "Demander l'accès",
+    'login.forgot': 'Mot de passe oublié ?',
     'login.bad_creds': 'Email ou mot de passe incorrect.',
     'req.h1a': 'Demander',
     'req.h1b': "l'accès",
@@ -48,6 +49,7 @@ const i18n: Record<Lang, Record<string, string>> = {
     'login.loading': 'Signing in...',
     'login.no_account': "Don't have an account?",
     'login.request_access': 'Request access',
+    'login.forgot': 'Forgot password?',
     'login.bad_creds': 'Incorrect email or password.',
     'req.h1a': 'Request',
     'req.h1b': 'access',
@@ -75,6 +77,7 @@ const i18n: Record<Lang, Record<string, string>> = {
     'login.loading': 'Conectando...',
     'login.no_account': '¿Aún no tienes cuenta?',
     'login.request_access': 'Solicitar acceso',
+    'login.forgot': '¿Olvidaste tu contraseña?',
     'login.bad_creds': 'Email o contraseña incorrectos.',
     'req.h1a': 'Solicitar',
     'req.h1b': 'acceso',
@@ -232,7 +235,13 @@ export default function LoginPage() {
               </button>
             </form>
 
-            <p className="text-center text-[#9C8E80] text-sm mt-8">
+            <p className="text-center text-[#9C8E80] text-sm mt-6">
+              <a href="/forgot-password" className="text-[#9C8E80] hover:text-[#C4622A] transition-colors">
+                {t['login.forgot']}
+              </a>
+            </p>
+
+            <p className="text-center text-[#9C8E80] text-sm mt-3">
               {t['login.no_account']}{' '}
               <button
                 onClick={() => { setView('request'); setError(null) }}
@@ -246,6 +255,12 @@ export default function LoginPage() {
 
         {view === 'request' && !reqSent && (
           <>
+            <button
+              onClick={() => { setView('login'); setError(null) }}
+              className="text-[#9C8E80] hover:text-[#1C1C2E] text-sm transition-colors mb-8 flex items-center gap-1"
+            >
+              ← {t['req.sign_in']}
+            </button>
             <h1 className="font-display text-4xl font-bold text-[#1C1C2E] mb-3 leading-tight">
               {t['req.h1a']}<br />
               <em className="text-[#C4622A]">{t['req.h1b']}</em>
