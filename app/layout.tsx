@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Cormorant_Garamond, DM_Sans } from 'next/font/google'
 import './globals.css'
 import { ServiceWorkerRegistrar } from '@/components/ServiceWorkerRegistrar'
+import FeedbackWidget from '@/components/FeedbackWidget'
 
 const cormorant = Cormorant_Garamond({
   variable: '--font-cormorant',
@@ -19,6 +20,9 @@ const dmSans = DM_Sans({
 export const metadata: Metadata = {
   title: "Memoir — Votre histoire mérite d'exister",
   description: 'Compagnon · Coach · Éditeur · Imprimeur',
+  icons: {
+    icon: '/icon.svg',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -27,6 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-full flex flex-col">
         <ServiceWorkerRegistrar />
         {children}
+        <FeedbackWidget />
       </body>
     </html>
   )

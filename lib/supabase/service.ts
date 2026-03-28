@@ -1,10 +1,23 @@
 import { createClient } from '@supabase/supabase-js'
 
 // Service-role client bypasses RLS — server-side only
-export const supabaseService = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+// Lazy singleton to avoid module-level crash at build time when env vars are absent
+let _supabaseService: ReturnType<typeof createClient> | null = null
+export function getSupabaseService() {
+  if (!_supabaseService) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+    if (!url || !key) throw new Error('Supabase env vars missing (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)')
+    _supabaseService = createClient(url, key)
+  }
+  return _supabaseService
+}
+/** @deprecated use getSupabaseService() */
+export const supabaseService = new Proxy({} as ReturnType<typeof createClient>, {
+  get(_, prop) {
+    return (getSupabaseService() as any)[prop]
+  },
+})
 
 /**
  * Ensure a Supabase auth user exists for this local userId.
