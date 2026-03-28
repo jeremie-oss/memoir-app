@@ -29,7 +29,8 @@ export async function updateSession(request: NextRequest) {
                       request.nextUrl.pathname.startsWith('/auth')
   const isPublicApiRoute = request.nextUrl.pathname.startsWith('/api/waitlist') ||
                           request.nextUrl.pathname.startsWith('/api/memoir') ||
-                          request.nextUrl.pathname.startsWith('/api/save-session')
+                          request.nextUrl.pathname.startsWith('/api/save-session') ||
+                          request.nextUrl.pathname.startsWith('/api/admin/approve')
   const isPublicRoute = request.nextUrl.pathname === '/' ||
                         request.nextUrl.pathname.startsWith('/welcome') ||
                         isPublicApiRoute

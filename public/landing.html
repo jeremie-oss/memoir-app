@@ -156,8 +156,16 @@ nav.scrolled{background:rgba(250,248,244,.9);backdrop-filter:blur(16px);border-b
 
 /* PRICING */
 #pricing{background:var(--ivory);padding:120px 52px}
-.pricing-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:64px}
-.plan{border-radius:20px;padding:36px 28px;border:1.5px solid var(--parchment);transition:all .3s;position:relative;overflow:hidden}
+.pricing-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:40px}
+.billing-toggle{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:32px}
+.billing-toggle span{font-size:13px;color:var(--warm);font-weight:500;cursor:pointer;transition:color .2s}
+.billing-toggle span.active{color:var(--ink)}
+.billing-switch{width:48px;height:26px;border-radius:9999px;background:var(--parchment);cursor:pointer;position:relative;transition:background .2s;border:none;padding:0}
+.billing-switch::after{content:'';position:absolute;width:20px;height:20px;border-radius:50%;background:#fff;top:3px;left:3px;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.billing-switch.annual{background:var(--vermeil)}
+.billing-switch.annual::after{transform:translateX(22px)}
+.billing-save{font-size:11px;color:var(--vermeil);font-weight:600;letter-spacing:.05em}
+.plan{border-radius:20px;padding:36px 28px;border:1.5px solid var(--parchment);transition:all .3s;position:relative;overflow:hidden;display:flex;flex-direction:column}
 .plan:hover{border-color:rgba(196,98,42,.3);transform:translateY(-4px);box-shadow:0 20px 60px rgba(28,28,46,.07)}
 .plan.featured{background:var(--ink);border-color:var(--ink)}
 .plan.featured:hover{border-color:var(--vermeil)}
@@ -178,7 +186,9 @@ nav.scrolled{background:rgba(250,248,244,.9);backdrop-filter:blur(16px);border-b
 .plan-features li{font-size:13px;color:var(--warm);display:flex;align-items:flex-start;gap:9px;line-height:1.5}
 .plan.featured .plan-features li{color:rgba(245,239,224,.7)}
 .plan-features li::before{content:'✓';color:var(--vermeil);font-weight:700;flex-shrink:0;margin-top:1px}
-.plan-cta{display:block;text-align:center;margin-top:28px;padding:12px;border-radius:9999px;font-size:13px;font-weight:500;text-decoration:none;cursor:pointer;border:1.5px solid var(--parchment);color:var(--ink);transition:all .25s;font-family:'DM Sans',sans-serif;background:transparent}
+.plan-size{font-size:12px;color:var(--sepia);font-weight:500;margin-bottom:24px;font-style:italic}
+.plan.featured .plan-size{color:rgba(245,239,224,.6)}
+.plan-cta{display:block;text-align:center;margin-top:auto;padding:12px;border-radius:9999px;font-size:13px;font-weight:500;text-decoration:none;cursor:pointer;border:1.5px solid var(--parchment);color:var(--ink);transition:all .25s;font-family:'DM Sans',sans-serif;background:transparent}
 .plan-cta:hover{border-color:var(--vermeil);color:var(--vermeil)}
 .plan.featured .plan-cta{background:var(--vermeil);border-color:var(--vermeil);color:#fff}
 .plan.featured .plan-cta:hover{opacity:.88}
@@ -220,6 +230,8 @@ footer p{font-size:12px;color:rgba(245,239,224,.3)}
   #hero{padding:0 24px 64px}
   #manifesto,#steps,#personas,#simulation,#pricing,#cta{padding:80px 24px}
   .steps-layout{grid-template-columns:1fr}
+  .step-item{padding:40px 28px}
+  .step-num-bg{font-size:80px;top:12px;right:16px;opacity:.35}
   .personas-grid{grid-template-columns:1fr}
   .sim-layout{grid-template-columns:1fr}
   .sim-persona-panel{position:static}
@@ -233,6 +245,8 @@ footer p{font-size:12px;color:rgba(245,239,224,.3)}
   .hero-stat-row{gap:28px}
   .phone{width:100%;max-width:340px}
   .lang-btn{padding:5px 8px}
+  .step-num-bg{font-size:64px;top:8px;right:12px}
+  .step-title{font-size:24px}
 }
 </style>
 </head>
@@ -415,44 +429,54 @@ footer p{font-size:12px;color:rgba(245,239,224,.3)}
   <div class="reveal">
     <p class="section-label" data-i18n="pricing.label">Tarifs</p>
     <h2 class="section-h2" data-i18n-html="pricing.h2">Simple. <em>Honnête.</em></h2>
-    <p style="color:var(--warm);font-size:15px;margin-top:14px;" data-i18n="pricing.sub">Payez une fois. Votre histoire vous appartient — pour toujours.</p>
+    <p style="color:var(--warm);font-size:15px;margin-top:14px;" data-i18n="pricing.sub">Toutes les fonctionnalités incluses. Choisissez la taille de votre œuvre.</p>
+  </div>
+  <div class="billing-toggle reveal">
+    <span id="billing-mo-label" class="active" data-i18n="pricing.monthly">Mensuel</span>
+    <button class="billing-switch" id="billing-switch" onclick="toggleBilling()"></button>
+    <span id="billing-yr-label" data-i18n="pricing.annual">Annuel</span>
+    <span class="billing-save" id="billing-save" data-i18n="pricing.save">-17%</span>
   </div>
   <div class="pricing-grid">
     <div class="plan reveal reveal-d1">
-      <div class="plan-badge" data-i18n="pricing.p1.badge">Gratuit</div>
-      <p class="plan-name" data-i18n="pricing.p1.name">Découverte</p>
-      <div class="plan-price"><sup>€</sup>0</div>
-      <p class="plan-desc" data-i18n="pricing.p1.desc">Pour tester Memoir et voir si ça vous correspond.</p>
+      <div class="plan-badge" data-i18n="pricing.p1.badge">Découvrir</div>
+      <p class="plan-name">Crayon</p>
+      <div class="plan-price" id="price-1"><sup>€</sup>9<sub data-i18n="pricing.sub.mo">/mois</sub></div>
+      <p class="plan-size" data-i18n="pricing.p1.size">~40 pages · 10 000 mots</p>
+      <p class="plan-desc" data-i18n="pricing.p1.desc">Pour esquisser votre histoire et découvrir Memoir.</p>
       <div class="plan-divider"></div>
       <ul class="plan-features" id="feat-1"></ul>
-      <button class="plan-cta" onclick="document.getElementById('cta-email').focus()" data-i18n="pricing.p1.cta">Commencer gratuitement</button>
+      <button class="plan-cta" onclick="document.getElementById('cta-email').focus()" data-i18n="pricing.p1.cta">Choisir Crayon</button>
     </div>
     <div class="plan reveal reveal-d2">
-      <div class="plan-badge" data-i18n="pricing.p2.badge">Mensuel</div>
-      <p class="plan-name" data-i18n="pricing.p2.name">En cours</p>
-      <div class="plan-price"><sup>€</sup>15<sub data-i18n="pricing.sub.mo">/mois</sub></div>
-      <p class="plan-desc" data-i18n="pricing.p2.desc">Toutes les fonctionnalités. Sans engagement, résiliable à tout moment.</p>
+      <div class="plan-badge" data-i18n="pricing.p2.badge">Écrire</div>
+      <p class="plan-name">Stilo</p>
+      <div class="plan-price" id="price-2"><sup>€</sup>19<sub data-i18n="pricing.sub.mo">/mois</sub></div>
+      <p class="plan-size" data-i18n="pricing.p2.size">~160 pages · 40 000 mots</p>
+      <p class="plan-desc" data-i18n="pricing.p2.desc">Pour écrire votre vie à votre rythme, sans limite de fonctionnalités.</p>
       <div class="plan-divider"></div>
       <ul class="plan-features" id="feat-2"></ul>
-      <button class="plan-cta" onclick="document.getElementById('cta-email').focus()" data-i18n="pricing.p2.cta">Choisir ce plan</button>
+      <button class="plan-cta" onclick="document.getElementById('cta-email').focus()" data-i18n="pricing.p2.cta">Choisir Stilo</button>
     </div>
     <div class="plan featured reveal reveal-d3">
-      <div class="plan-badge" data-i18n="pricing.p3.badge">Le plus choisi</div>
-      <p class="plan-name" data-i18n="pricing.p3.name">Simple</p>
-      <div class="plan-price"><sup>€</sup>80</div>
-      <p class="plan-desc" data-i18n="pricing.p3.desc">Une fois. Pour toujours. Votre livre numérique inclus sans surprise.</p>
+      <div class="plan-badge" data-i18n="pricing.p3.badge">Publier</div>
+      <p class="plan-name">Plum</p>
+      <div class="plan-price" id="price-3"><sup>€</sup>199<sub data-i18n="pricing.sub.yr">/an</sub></div>
+      <p class="plan-size" data-i18n="pricing.p3.size">~320 pages · 80 000 mots</p>
+      <p class="plan-desc" data-i18n="pricing.p3.desc">Votre histoire imprimée en un beau livre. Le plan le plus choisi.</p>
       <div class="plan-divider"></div>
       <ul class="plan-features" id="feat-3"></ul>
-      <button class="plan-cta" onclick="document.getElementById('cta-email').focus()" data-i18n="pricing.p3.cta">Choisir Simple</button>
+      <button class="plan-cta" onclick="document.getElementById('cta-email').focus()" data-i18n="pricing.p3.cta">Choisir Plum</button>
     </div>
     <div class="plan reveal reveal-d4">
-      <div class="plan-badge" data-i18n="pricing.p4.badge">Complet</div>
-      <p class="plan-name" data-i18n="pricing.p4.name">Premium</p>
-      <div class="plan-price"><sup>€</sup>160</div>
-      <p class="plan-desc" data-i18n="pricing.p4.desc">Votre histoire imprimée et livrée. Le cadeau ultime pour ceux qu'on aime.</p>
+      <div class="plan-badge" data-i18n="pricing.p4.badge">Transmettre</div>
+      <p class="plan-name">Gutenberg</p>
+      <div class="plan-price" id="price-4"><sup>€</sup>249<sub data-i18n="pricing.sub.yr">/an</sub></div>
+      <p class="plan-size" data-i18n="pricing.p4.size">Illimité</p>
+      <p class="plan-desc" data-i18n="pricing.p4.desc">L'œuvre complète, imprimée et livrée. Le cadeau ultime pour ceux qu'on aime.</p>
       <div class="plan-divider"></div>
       <ul class="plan-features" id="feat-4"></ul>
-      <button class="plan-cta" onclick="document.getElementById('cta-email').focus()" data-i18n="pricing.p4.cta">Choisir Premium</button>
+      <button class="plan-cta" onclick="document.getElementById('cta-email').focus()" data-i18n="pricing.p4.cta">Choisir Gutenberg</button>
     </div>
   </div>
   <p class="pricing-note reveal" data-i18n-html="pricing.note"></p>
@@ -465,11 +489,16 @@ footer p{font-size:12px;color:rgba(245,239,224,.3)}
     <p class="section-label reveal" style="justify-content:center;display:flex" data-i18n="cta.label">Accès anticipé</p>
     <h2 class="cta-h2 reveal" data-i18n-html="cta.h2">Votre histoire commence<br><em>maintenant.</em></h2>
     <p class="cta-sub reveal" data-i18n="cta.sub">Rejoignez les premiers à écrire avec Memoir. Accès prioritaire et tarif early-bird garanti.</p>
-    <div class="cta-form reveal">
+    <div class="cta-form reveal" id="cta-form-container">
       <input class="cta-input" type="email" id="cta-email" data-i18n-placeholder="cta.placeholder" placeholder="votre@email.com"/>
       <button class="btn-primary" id="cta-btn" onclick="submitCTA()" data-i18n="cta.btn">Réserver ma place</button>
     </div>
-    <p class="cta-small reveal" data-i18n="cta.small">Aucune carte requise · Désabonnement en un clic · Vos données restent privées</p>
+    <div id="cta-success" style="display:none;text-align:center;">
+      <p style="font-size:20px;margin-bottom:8px;">✦</p>
+      <p class="cta-sub" id="cta-success-msg" data-i18n="cta.success">Merci ! Nous vous envoyons vos identifiants très vite.</p>
+      <a href="/login" class="btn-primary" style="display:inline-block;margin-top:20px;text-decoration:none;" data-i18n="cta.login">Déjà un compte ? Se connecter</a>
+    </div>
+    <p class="cta-small reveal" id="cta-small-text" data-i18n="cta.small">Aucune carte requise · Désabonnement en un clic · Vos données restent privées</p>
   </div>
 </section>
 
@@ -514,16 +543,17 @@ fr:{
   "sim.label":"Simulation en direct","sim.h2":"La première <em>séance.</em>","sim.sub":"Voici à quoi ressemble une vraie conversation entre Memoir et l'un de vos futurs utilisateurs. L'IA pose, écoute, reformule — sans jamais forcer.",
   "sim.panel.label":"Persona actif","sim.phone.status":"En ligne · Première séance","sim.phone.placeholder":"Parlez ou tapez...","sim.replay":"Rejouer la conversation",
   "sim.sw0":"👵 Marguerite, 72 ans","sim.sw1":"👨 Thomas, 46 ans","sim.sw2":"👩 Rachid (père de Camille), 70 ans",
-  "pricing.label":"Tarifs","pricing.h2":"Simple. <em>Honnête.</em>","pricing.sub":"Payez une fois. Votre histoire vous appartient — pour toujours.",
-  "pricing.sub.mo":"/mois",
-  "pricing.p1.badge":"Gratuit","pricing.p1.name":"Découverte","pricing.p1.desc":"Pour tester Memoir et voir si ça vous correspond.","pricing.p1.feats":["Onboarding conversationnel complet","Génération de La Trame","2 passages rédigés","Accès aux 3 modes d'écriture"],"pricing.p1.cta":"Commencer gratuitement",
-  "pricing.p2.badge":"Mensuel","pricing.p2.name":"En cours","pricing.p2.desc":"Toutes les fonctionnalités. Sans engagement, résiliable à tout moment.","pricing.p2.feats":["Passages illimités","Mode voix complet (Whisper)","Calibration de la Plume","Streaks & jalons de motivation","PDF numérique inclus"],"pricing.p2.cta":"Choisir ce plan",
-  "pricing.p3.badge":"Le plus choisi","pricing.p3.name":"Simple","pricing.p3.desc":"Une fois. Pour toujours. Votre livre numérique inclus sans surprise.","pricing.p3.feats":["Tout du plan Mensuel","Paiement unique — pas d'abonnement","Livre numérique PDF inclus","Accès à vie & mises à jour","Support prioritaire"],"pricing.p3.cta":"Choisir Simple",
-  "pricing.p4.badge":"Complet","pricing.p4.name":"Premium","pricing.p4.desc":"Votre histoire imprimée et livrée. Le cadeau ultime pour ceux qu'on aime.","pricing.p4.feats":["Tout du plan Simple","Livre physique imprimé & livré","Manuscrit à mi-parcours","Mise en page typographique premium","Couverture personnalisée"],"pricing.p4.cta":"Choisir Premium",
-  "pricing.note":"<strong>Note sur les plans Simple et Premium :</strong> si votre livre n'est pas terminé après 1 an, Memoir ajoute <strong>2€/mois</strong> — non pas comme une pénalité, mais pour maintenir votre projet actif et vous rappeler doucement qu'il vous attend.",
+  "pricing.label":"Tarifs","pricing.h2":"Simple. <em>Honnête.</em>","pricing.sub":"Toutes les fonctionnalités incluses. Choisissez la taille de votre œuvre.",
+  "pricing.monthly":"Mensuel","pricing.annual":"Annuel","pricing.save":"-17%",
+  "pricing.sub.mo":"/mois","pricing.sub.yr":"/an",
+  "pricing.p1.badge":"Découvrir","pricing.p1.desc":"Pour esquisser votre histoire et découvrir Memoir.","pricing.p1.size":"~40 pages · 10 000 mots","pricing.p1.feats":["Onboarding conversationnel","La Trame (plan narratif)","3 modes d'écriture","Calibration La Plume (style IA)","Mode voix (Whisper)","Streaks & motivation","Export PDF numérique"],"pricing.p1.cta":"Choisir Crayon",
+  "pricing.p2.badge":"Écrire","pricing.p2.desc":"Pour écrire votre vie à votre rythme, sans limite de fonctionnalités.","pricing.p2.size":"~160 pages · 40 000 mots","pricing.p2.feats":["Tout de Crayon","4× plus de contenu","Gestion de documents","Arbres de personnages","Frises chronologiques"],"pricing.p2.cta":"Choisir Stilo",
+  "pricing.p3.badge":"Publier","pricing.p3.desc":"Votre histoire imprimée en un beau livre. Le plan le plus choisi.","pricing.p3.size":"~320 pages · 80 000 mots","pricing.p3.feats":["Tout de Stilo","1 livre imprimé & livré","Support prioritaire"],"pricing.p3.cta":"Choisir Plum",
+  "pricing.p4.badge":"Transmettre","pricing.p4.desc":"L'œuvre complète, imprimée et livrée. Le cadeau ultime pour ceux qu'on aime.","pricing.p4.size":"Illimité","pricing.p4.feats":["Tout de Plum","3 exemplaires du livre","Manuscrit à mi-parcours","Mise en page premium","Couverture personnalisée"],"pricing.p4.cta":"Choisir Gutenberg",
+  "pricing.note":"<strong>Crayon et Stilo</strong> sont disponibles en mensuel ou annuel. <strong>Plum et Gutenberg</strong> sont annuels — votre livre prend le temps qu'il faut.",
   "cta.label":"Accès anticipé","cta.h2":"Votre histoire commence<br><em>maintenant.</em>","cta.sub":"Rejoignez les premiers à écrire avec Memoir. Accès prioritaire et tarif early-bird garanti.","cta.placeholder":"votre@email.com","cta.btn":"Réserver ma place","cta.small":"Aucune carte requise · Désabonnement en un clic · Vos données restent privées",
-  "footer.legal":"Mentions légales","footer.privacy":"Confidentialité","footer.contact":"Contact","footer.copy":"© 2025 Memoir · Tous droits réservés",
-  "cta.success":"✓ Réservé !"
+  "cta.success":"Merci ! Nous vous envoyons vos identifiants très vite.","cta.login":"Déjà un compte ? Se connecter",
+  "footer.legal":"Mentions légales","footer.privacy":"Confidentialité","footer.contact":"Contact","footer.copy":"© 2025 Memoir · Tous droits réservés"
 },
 
 en:{
@@ -551,16 +581,17 @@ en:{
   "sim.label":"Live simulation","sim.h2":"The first <em>session.</em>","sim.sub":"Here's what a real conversation between Memoir and one of your future users looks like. The AI asks, listens, rephrases — never forcing.",
   "sim.panel.label":"Active persona","sim.phone.status":"Online · First session","sim.phone.placeholder":"Speak or type...","sim.replay":"Replay the conversation",
   "sim.sw0":"👵 Marguerite, 72","sim.sw1":"👨 Thomas, 46","sim.sw2":"👩 Rachid (Camille's father), 70",
-  "pricing.label":"Pricing","pricing.h2":"Simple. <em>Honest.</em>","pricing.sub":"Pay once. Your story belongs to you — forever.",
-  "pricing.sub.mo":"/mo",
-  "pricing.p1.badge":"Free","pricing.p1.name":"Discovery","pricing.p1.desc":"To try Memoir and see if it suits you.","pricing.p1.feats":["Complete conversational onboarding","The Trame generation","2 written passages","Access to all 3 writing modes"],"pricing.p1.cta":"Start for free",
-  "pricing.p2.badge":"Monthly","pricing.p2.name":"In Progress","pricing.p2.desc":"All features. No commitment, cancel anytime.","pricing.p2.feats":["Unlimited passages","Full voice mode (Whisper)","Plume calibration","Streaks & motivation milestones","Digital PDF included"],"pricing.p2.cta":"Choose this plan",
-  "pricing.p3.badge":"Most popular","pricing.p3.name":"Simple","pricing.p3.desc":"Once. Forever. Your digital book included, no surprises.","pricing.p3.feats":["Everything in Monthly","One-time payment — no subscription","Digital PDF book included","Lifetime access & updates","Priority support"],"pricing.p3.cta":"Choose Simple",
-  "pricing.p4.badge":"Complete","pricing.p4.name":"Premium","pricing.p4.desc":"Your story printed and delivered. The ultimate gift for those you love.","pricing.p4.feats":["Everything in Simple","Printed & delivered physical book","Mid-progress manuscript","Premium typographic layout","Custom cover"],"pricing.p4.cta":"Choose Premium",
-  "pricing.note":"<strong>Note on Simple and Premium plans:</strong> if your book isn't finished after 1 year, Memoir adds <strong>€2/month</strong> — not as a penalty, but to keep your project alive and gently remind you it's waiting.",
+  "pricing.label":"Pricing","pricing.h2":"Simple. <em>Honest.</em>","pricing.sub":"All features included. Choose the size of your work.",
+  "pricing.monthly":"Monthly","pricing.annual":"Annual","pricing.save":"-17%",
+  "pricing.sub.mo":"/mo","pricing.sub.yr":"/yr",
+  "pricing.p1.badge":"Discover","pricing.p1.desc":"To sketch your story and discover Memoir.","pricing.p1.size":"~40 pages · 10,000 words","pricing.p1.feats":["Conversational onboarding","The Trame (narrative plan)","3 writing modes","Plume calibration (AI style)","Voice mode (Whisper)","Streaks & motivation","Digital PDF export"],"pricing.p1.cta":"Choose Crayon",
+  "pricing.p2.badge":"Write","pricing.p2.desc":"To write your life at your own pace, with no feature limits.","pricing.p2.size":"~160 pages · 40,000 words","pricing.p2.feats":["Everything in Crayon","4× more content","Document management","Character trees","Incremental timelines"],"pricing.p2.cta":"Choose Stilo",
+  "pricing.p3.badge":"Publish","pricing.p3.desc":"Your story printed as a beautiful book. The most popular plan.","pricing.p3.size":"~320 pages · 80,000 words","pricing.p3.feats":["Everything in Stilo","1 printed & delivered book","Priority support"],"pricing.p3.cta":"Choose Plum",
+  "pricing.p4.badge":"Pass it on","pricing.p4.desc":"The complete work, printed and delivered. The ultimate gift for those you love.","pricing.p4.size":"Unlimited","pricing.p4.feats":["Everything in Plum","3 copies of the book","Mid-progress manuscript","Premium layout","Custom cover"],"pricing.p4.cta":"Choose Gutenberg",
+  "pricing.note":"<strong>Crayon and Stilo</strong> are available monthly or annually. <strong>Plum and Gutenberg</strong> are annual — your book takes the time it needs.",
   "cta.label":"Early access","cta.h2":"Your story begins<br><em>now.</em>","cta.sub":"Join the first to write with Memoir. Priority access and early-bird pricing guaranteed.","cta.placeholder":"your@email.com","cta.btn":"Reserve my spot","cta.small":"No card required · Unsubscribe with one click · Your data stays private",
-  "footer.legal":"Legal","footer.privacy":"Privacy","footer.contact":"Contact","footer.copy":"© 2025 Memoir · All rights reserved",
-  "cta.success":"✓ Reserved!"
+  "cta.success":"Thank you! We'll send your credentials very soon.","cta.login":"Already have an account? Sign in",
+  "footer.legal":"Legal","footer.privacy":"Privacy","footer.contact":"Contact","footer.copy":"© 2025 Memoir · All rights reserved"
 },
 
 es:{
@@ -588,16 +619,17 @@ es:{
   "sim.label":"Simulación en directo","sim.h2":"La primera <em>sesión.</em>","sim.sub":"Así es una conversación real entre Memoir y uno de tus futuros usuarios. La IA pregunta, escucha, reformula — sin forzar nunca.",
   "sim.panel.label":"Persona activa","sim.phone.status":"En línea · Primera sesión","sim.phone.placeholder":"Habla o escribe...","sim.replay":"Repetir la conversación",
   "sim.sw0":"👵 Marguerite, 72 años","sim.sw1":"👨 Thomas, 46 años","sim.sw2":"👩 Rachid (padre de Camille), 70 años",
-  "pricing.label":"Precios","pricing.h2":"Simple. <em>Honesto.</em>","pricing.sub":"Paga una vez. Tu historia te pertenece — para siempre.",
-  "pricing.sub.mo":"/mes",
-  "pricing.p1.badge":"Gratis","pricing.p1.name":"Descubrimiento","pricing.p1.desc":"Para probar Memoir y ver si se adapta a ti.","pricing.p1.feats":["Onboarding conversacional completo","Generación de La Trama","2 pasajes escritos","Acceso a los 3 modos de escritura"],"pricing.p1.cta":"Empezar gratis",
-  "pricing.p2.badge":"Mensual","pricing.p2.name":"En Curso","pricing.p2.desc":"Todas las funcionalidades. Sin compromiso, cancela cuando quieras.","pricing.p2.feats":["Pasajes ilimitados","Modo voz completo (Whisper)","Calibración de la Pluma","Rachas y hitos de motivación","PDF digital incluido"],"pricing.p2.cta":"Elegir este plan",
-  "pricing.p3.badge":"El más elegido","pricing.p3.name":"Simple","pricing.p3.desc":"Una vez. Para siempre. Tu libro digital incluido sin sorpresas.","pricing.p3.feats":["Todo del plan Mensual","Pago único — sin suscripción","Libro digital PDF incluido","Acceso de por vida y actualizaciones","Soporte prioritario"],"pricing.p3.cta":"Elegir Simple",
-  "pricing.p4.badge":"Completo","pricing.p4.name":"Premium","pricing.p4.desc":"Tu historia impresa y entregada. El regalo definitivo para los que quieres.","pricing.p4.feats":["Todo del plan Simple","Libro físico impreso y entregado","Manuscrito a mitad de camino","Maquetación tipográfica premium","Portada personalizada"],"pricing.p4.cta":"Elegir Premium",
-  "pricing.note":"<strong>Nota sobre los planes Simple y Premium:</strong> si tu libro no está terminado al cabo de 1 año, Memoir añade <strong>2€/mes</strong> — no como penalización, sino para mantener tu proyecto activo y recordarte suavemente que te está esperando.",
+  "pricing.label":"Precios","pricing.h2":"Simple. <em>Honesto.</em>","pricing.sub":"Todas las funcionalidades incluidas. Elige el tamaño de tu obra.",
+  "pricing.monthly":"Mensual","pricing.annual":"Anual","pricing.save":"-17%",
+  "pricing.sub.mo":"/mes","pricing.sub.yr":"/año",
+  "pricing.p1.badge":"Descubrir","pricing.p1.desc":"Para esbozar tu historia y descubrir Memoir.","pricing.p1.size":"~40 páginas · 10 000 palabras","pricing.p1.feats":["Onboarding conversacional","La Trama (plan narrativo)","3 modos de escritura","Calibración La Pluma (estilo IA)","Modo voz (Whisper)","Rachas y motivación","Exportación PDF digital"],"pricing.p1.cta":"Elegir Crayon",
+  "pricing.p2.badge":"Escribir","pricing.p2.desc":"Para escribir tu vida a tu ritmo, sin límite de funcionalidades.","pricing.p2.size":"~160 páginas · 40 000 palabras","pricing.p2.feats":["Todo de Crayon","4× más contenido","Gestión de documentos","Árboles de personajes","Líneas de tiempo"],"pricing.p2.cta":"Elegir Stilo",
+  "pricing.p3.badge":"Publicar","pricing.p3.desc":"Tu historia impresa en un hermoso libro. El plan más elegido.","pricing.p3.size":"~320 páginas · 80 000 palabras","pricing.p3.feats":["Todo de Stilo","1 libro impreso y entregado","Soporte prioritario"],"pricing.p3.cta":"Elegir Plum",
+  "pricing.p4.badge":"Transmitir","pricing.p4.desc":"La obra completa, impresa y entregada. El regalo definitivo para quienes amas.","pricing.p4.size":"Ilimitado","pricing.p4.feats":["Todo de Plum","3 ejemplares del libro","Manuscrito a mitad de camino","Maquetación premium","Portada personalizada"],"pricing.p4.cta":"Elegir Gutenberg",
+  "pricing.note":"<strong>Crayon y Stilo</strong> están disponibles en mensual o anual. <strong>Plum y Gutenberg</strong> son anuales — tu libro se toma el tiempo que necesita.",
   "cta.label":"Acceso anticipado","cta.h2":"Tu historia comienza<br><em>ahora.</em>","cta.sub":"Únete a los primeros en escribir con Memoir. Acceso prioritario y precio early-bird garantizado.","cta.placeholder":"tu@email.com","cta.btn":"Reservar mi plaza","cta.small":"Sin tarjeta requerida · Baja en un clic · Tus datos permanecen privados",
-  "footer.legal":"Aviso legal","footer.privacy":"Privacidad","footer.contact":"Contacto","footer.copy":"© 2025 Memoir · Todos los derechos reservados",
-  "cta.success":"✓ ¡Reservado!"
+  "cta.success":"¡Gracias! Te enviaremos tus credenciales muy pronto.","cta.login":"¿Ya tienes cuenta? Iniciar sesión",
+  "footer.legal":"Aviso legal","footer.privacy":"Privacidad","footer.contact":"Contacto","footer.copy":"© 2025 Memoir · Todos los derechos reservados"
 }
 };
 
@@ -780,6 +812,9 @@ function switchLang(lang){
     if(ul && feats) ul.innerHTML = feats.map(f=>`<li>${f}</li>`).join('');
   });
 
+  // Update pricing prices (for monthly/annual toggle)
+  if(typeof updatePrices === 'function') updatePrices();
+
   // Update switcher buttons
   ['sim.sw0','sim.sw1','sim.sw2'].forEach((k,i)=>{
     const btn = document.getElementById('sw-btn-'+i);
@@ -908,6 +943,33 @@ function playConversation(key){
   if(ul && feats) ul.innerHTML = feats.map(f=>`<li>${f}</li>`).join('');
 });
 
+// Billing toggle (monthly/annual) — only affects Crayon & Stilo
+let billingAnnual = false;
+const PRICES = {
+  monthly: [9, 19],
+  annual: [89, 189],
+};
+function toggleBilling(){
+  billingAnnual = !billingAnnual;
+  const sw = document.getElementById('billing-switch');
+  const moLabel = document.getElementById('billing-mo-label');
+  const yrLabel = document.getElementById('billing-yr-label');
+  sw.classList.toggle('annual', billingAnnual);
+  moLabel.classList.toggle('active', !billingAnnual);
+  yrLabel.classList.toggle('active', billingAnnual);
+  updatePrices();
+}
+function updatePrices(){
+  const subKey = billingAnnual ? 'pricing.sub.yr' : 'pricing.sub.mo';
+  const sub = T[currentLang][subKey] || (billingAnnual ? '/an' : '/mois');
+  const prices = billingAnnual ? PRICES.annual : PRICES.monthly;
+  [1,2].forEach((n,i)=>{
+    const el = document.getElementById('price-'+n);
+    if(el) el.innerHTML = `<sup>€</sup>${prices[i]}<sub>${sub}</sub>`;
+  });
+}
+updatePrices();
+
 // Init switcher buttons
 ['sim.sw0','sim.sw1','sim.sw2'].forEach((k,i)=>{
   const btn = document.getElementById('sw-btn-'+i);
@@ -972,8 +1034,8 @@ window.addEventListener('scroll',()=>{
 
 // CTAs — redirige vers l'app
 const MEMOIR_APP_URL = '';
-document.getElementById('hero-cta-btn').href = MEMOIR_APP_URL + '/home';
-document.getElementById('nav-cta-btn').href = MEMOIR_APP_URL + '/home';
+document.getElementById('hero-cta-btn').href = MEMOIR_APP_URL + '/login';
+document.getElementById('nav-cta-btn').href = MEMOIR_APP_URL + '/login';
 document.querySelectorAll('.plan-cta').forEach(btn => {
   if(btn.getAttribute('onclick')?.includes('cta-email')) {
     btn.setAttribute('onclick', "window.location.href='" + MEMOIR_APP_URL + "/home'");
@@ -991,9 +1053,11 @@ function submitCTA(){
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({ email, source: 'landing', lang: currentLang })
   })
-  .catch(() => {}) // ne pas bloquer si l'API est indisponible
+  .catch(() => {})
   .finally(() => {
-    window.location.href = MEMOIR_APP_URL + '/home';
+    document.getElementById('cta-form-container').style.display = 'none';
+    document.getElementById('cta-small-text').style.display = 'none';
+    document.getElementById('cta-success').style.display = 'block';
   });
 }
 </script>
