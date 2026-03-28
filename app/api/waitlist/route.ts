@@ -3,16 +3,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import crypto from 'crypto'
 
-// Server-side Supabase client — uses anon key with permissive RLS insert policy
+// Server-side Supabase client — uses service role key to bypass RLS
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
 const ALLOWED_ORIGINS = [
   'https://memoir.app',
   'https://www.memoir.app',
-  'https://memoir-app-two.vercel.app',
+  'https://getyourmemoir.com',
   'http://localhost:3000',
 ]
 
@@ -42,7 +42,7 @@ export async function OPTIONS(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const cors = getCorsHeaders(req)
   try {
-    const { email, name, source, lang, snippet } = await req.json()
+    const { email, name, prenom, ville, source, lang, snippet, pour_qui, quoi_ecrire } = await req.json()
 
     if (!email || !EMAIL_REGEX.test(email)) {
       return NextResponse.json({ error: 'Invalid email' }, { status: 400, headers: cors })
@@ -52,8 +52,12 @@ export async function POST(req: NextRequest) {
       {
         email: email.trim().toLowerCase(),
         name: name || null,
+        prenom: prenom || null,
+        ville: ville || null,
         source: source || 'unknown',
         lang: lang || 'fr',
+        pour_qui: pour_qui || null,
+        quoi_ecrire: quoi_ecrire ? quoi_ecrire.slice(0, 500) : null,
         session_snippet: snippet ? snippet.slice(0, 200) : null,
       },
       { onConflict: 'email', ignoreDuplicates: false }
@@ -66,14 +70,14 @@ export async function POST(req: NextRequest) {
 
     // Send welcome email if Resend is configured
     if (process.env.RESEND_API_KEY) {
+      const resend = new Resend(process.env.RESEND_API_KEY)
       try {
-        const resend = new Resend(process.env.RESEND_API_KEY)
         const firstName = (name || 'vous').split(' ')[0]
         const isEn = lang === 'en'
         const isEs = lang === 'es'
 
         await resend.emails.send({
-          from: 'Jérémie · Memoir <bonjour@memoir.app>',
+          from: 'Jérémie · Memoir <bonjour@getyourmemoir.com>',
           to: email.trim().toLowerCase(),
           subject: isEn
             ? `${firstName}, your early access is reserved ✦`
@@ -92,7 +96,7 @@ export async function POST(req: NextRequest) {
     We'll write to you personally when your priority access is ready. In the meantime, know that your story already exists — it's just waiting to be told.
   </p>
   <p style="font-size:13px;color:#9C8E80;margin-top:40px;border-top:1px solid #EDE4D8;padding-top:24px;">
-    Jérémie &amp; the Memoir team · <a href="https://memoir-app-two.vercel.app" style="color:#C4622A;text-decoration:none;">memoir-app-two.vercel.app</a>
+    Jérémie &amp; the Memoir team · <a href="https://getyourmemoir.com" style="color:#C4622A;text-decoration:none;">getyourmemoir.com</a>
   </p>
 </div>` : isEs ? `
 <div style="font-family:'Georgia',serif;max-width:560px;margin:0 auto;padding:40px 24px;color:#1C1C2E;background:#FAF8F4;">
@@ -106,7 +110,7 @@ export async function POST(req: NextRequest) {
     Te escribiremos personalmente cuando tu acceso prioritario esté listo.
   </p>
   <p style="font-size:13px;color:#9C8E80;margin-top:40px;border-top:1px solid #EDE4D8;padding-top:24px;">
-    Jérémie &amp; el equipo de Memoir · <a href="https://memoir-app-two.vercel.app" style="color:#C4622A;text-decoration:none;">memoir-app-two.vercel.app</a>
+    Jérémie &amp; el equipo de Memoir · <a href="https://getyourmemoir.com" style="color:#C4622A;text-decoration:none;">getyourmemoir.com</a>
   </p>
 </div>` : `
 <div style="font-family:'Georgia',serif;max-width:560px;margin:0 auto;padding:40px 24px;color:#1C1C2E;background:#FAF8F4;">
@@ -120,7 +124,7 @@ export async function POST(req: NextRequest) {
     Nous vous écrirons personnellement dès que votre accès prioritaire sera prêt. D'ici là, sachez que votre histoire existe déjà — elle attend juste d'être racontée.
   </p>
   <p style="font-size:13px;color:#9C8E80;margin-top:40px;border-top:1px solid #EDE4D8;padding-top:24px;">
-    Jérémie &amp; l'équipe Memoir · <a href="https://memoir-app-two.vercel.app" style="color:#C4622A;text-decoration:none;">memoir-app-two.vercel.app</a>
+    Jérémie &amp; l'équipe Memoir · <a href="https://getyourmemoir.com" style="color:#C4622A;text-decoration:none;">getyourmemoir.com</a>
   </p>
 </div>`,
         })
@@ -155,6 +159,29 @@ export async function POST(req: NextRequest) {
       } catch (emailErr) {
         // Email failure is non-blocking — waitlist entry was saved
         console.error('[waitlist email]', emailErr)
+      }
+
+      // Notify admin (non-blocking)
+      try {
+        await resend.emails.send({
+          from: 'Memoir Notifications <bonjour@getyourmemoir.com>',
+          to: 'jeremiebenhamou@gmail.com',
+          subject: `[Memoir] Nouvelle inscription — ${prenom || name || email}`,
+          html: `<div style="font-family:sans-serif;max-width:480px;padding:24px;color:#1C1C2E;">
+  <p style="font-size:13px;color:#C4622A;text-transform:uppercase;letter-spacing:0.1em;">✦ Memoir — Waitlist</p>
+  <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+    <tr><td style="padding:6px 0;color:#7A4F32;font-size:13px;width:90px;">Prénom</td><td style="font-size:13px;font-weight:600;">${prenom || '—'}</td></tr>
+    <tr><td style="padding:6px 0;color:#7A4F32;font-size:13px;">Email</td><td style="font-size:13px;">${email}</td></tr>
+    <tr><td style="padding:6px 0;color:#7A4F32;font-size:13px;">Ville</td><td style="font-size:13px;">${ville || '—'}</td></tr>
+    <tr><td style="padding:6px 0;color:#7A4F32;font-size:13px;">Pour qui</td><td style="font-size:13px;">${pour_qui || '—'}</td></tr>
+    <tr><td style="padding:6px 0;color:#7A4F32;font-size:13px;vertical-align:top;">Envie d'écrire</td><td style="font-size:13px;font-style:italic;">${quoi_ecrire || '—'}</td></tr>
+    <tr><td style="padding:6px 0;color:#7A4F32;font-size:13px;">Source</td><td style="font-size:13px;">${source || '—'}</td></tr>
+  </table>
+  <a href="https://getyourmemoir.com/admin" style="display:inline-block;padding:10px 24px;background:#1C1C2E;color:white;text-decoration:none;border-radius:100px;font-size:13px;">Voir l'admin ↗</a>
+</div>`,
+        })
+      } catch (adminEmailErr) {
+        console.error('[waitlist admin email]', adminEmailErr)
       }
     }
 

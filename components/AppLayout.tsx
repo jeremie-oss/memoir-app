@@ -155,16 +155,27 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
       {/* Footer */}
       <div className="mt-6 pt-4 border-t border-[#EDE4D8] space-y-3 px-2">
-        {/* Lang toggle */}
-        <div className="flex items-center gap-1 bg-[#EDE4D8] rounded-full p-0.5 self-start w-fit">
-          {(['fr', 'en'] as const).map(l => (
-            <button key={l} onClick={() => store.setLang(l)}
-              className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
-                (store.lang || 'fr') === l ? 'bg-[#1C1C2E] text-white' : 'text-[#7A4F32] hover:text-[#1C1C2E]'
-              }`}>
-              {l.toUpperCase()}
-            </button>
-          ))}
+        {/* Lang toggle + feedback */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1 bg-[#EDE4D8] rounded-full p-0.5">
+            {(['fr', 'en'] as const).map(l => (
+              <button key={l} onClick={() => store.setLang(l)}
+                className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+                  (store.lang || 'fr') === l ? 'bg-[#1C1C2E] text-white' : 'text-[#7A4F32] hover:text-[#1C1C2E]'
+                }`}>
+                {l.toUpperCase()}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => window.dispatchEvent(new Event('memoir:open-feedback'))}
+            title="Donner mon avis"
+            className="w-7 h-7 rounded-full bg-[#EDE4D8] hover:bg-[#C4622A]/15 text-[#9C8E80] hover:text-[#C4622A] transition-all flex items-center justify-center"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+          </button>
         </div>
 
         {/* User */}

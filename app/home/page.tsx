@@ -1358,7 +1358,7 @@ export default function HomePage() {
             </div>
 
             {/* Footer links */}
-            <div className="flex items-center justify-center gap-6 pt-4 pb-2">
+            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pt-4 pb-2">
               <button
                 onClick={() => router.push('/quotes')}
                 className="text-[10px] text-[#C4B9A8]/50 hover:text-[#7A4F32] transition-colors tracking-wide flex items-center gap-1.5"
@@ -1371,10 +1371,24 @@ export default function HomePage() {
               </button>
               <span className="text-[#C4B9A8]/20 text-[10px]">·</span>
               <button
+                onClick={() => router.push('/mentions-legales')}
+                className="text-[10px] text-[#C4B9A8]/50 hover:text-[#7A4F32] transition-colors tracking-wide"
+              >
+                {store.lang === 'fr' ? 'Mentions légales' : store.lang === 'es' ? 'Aviso legal' : 'Legal Notice'}
+              </button>
+              <span className="text-[#C4B9A8]/20 text-[10px]">·</span>
+              <button
                 onClick={() => router.push('/privacy')}
                 className="text-[10px] text-[#C4B9A8]/50 hover:text-[#7A4F32] transition-colors tracking-wide"
               >
                 {store.lang === 'fr' ? 'Confidentialité' : store.lang === 'es' ? 'Privacidad' : 'Privacy'}
+              </button>
+              <span className="text-[#C4B9A8]/20 text-[10px]">·</span>
+              <button
+                onClick={() => router.push('/contact')}
+                className="text-[10px] text-[#C4B9A8]/50 hover:text-[#7A4F32] transition-colors tracking-wide"
+              >
+                {store.lang === 'fr' ? 'Contact' : store.lang === 'es' ? 'Contacto' : 'Contact'}
               </button>
             </div>
 

@@ -159,6 +159,49 @@ create or replace trigger streaks_updated_at
   for each row execute function update_updated_at();
 
 -- ============================================================
+-- MIGRATIONS v2 (2026-03-28)
+-- Run in Supabase Dashboard → SQL Editor → New Query
+-- ============================================================
+
+-- Waitlist: new enrichment columns
+alter table waitlist
+  add column if not exists prenom      text,
+  add column if not exists ville       text,
+  add column if not exists pour_qui    text check (pour_qui in ('soi', 'proche')),
+  add column if not exists quoi_ecrire text;
+
+-- Access requests (beta early access)
+create table if not exists access_requests (
+  id          uuid primary key default uuid_generate_v4(),
+  email       text not null unique,
+  prenom      text,
+  nom         text,
+  motivation  text,
+  status      text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  token       uuid not null default uuid_generate_v4(),
+  created_at  timestamptz not null default now()
+);
+alter table access_requests enable row level security;
+create policy "ar_insert_public" on access_requests for insert with check (true);
+create policy "ar_select_service" on access_requests for select using (false);
+
+-- Feedbacks (beta testing)
+create table if not exists feedbacks (
+  id           uuid primary key default uuid_generate_v4(),
+  user_id      uuid,
+  user_email   text,
+  page_url     text,
+  page_context jsonb,
+  message      text not null,
+  rating       text check (rating in ('positive', 'neutral', 'negative')),
+  status       text not null default 'new' check (status in ('new', 'seen', 'done')),
+  created_at   timestamptz not null default now()
+);
+alter table feedbacks enable row level security;
+create policy "fb_insert_public" on feedbacks for insert with check (true);
+create policy "fb_select_service" on feedbacks for select using (false);
+
+-- ============================================================
 -- ROW LEVEL SECURITY
 -- ============================================================
 alter table projects  enable row level security;

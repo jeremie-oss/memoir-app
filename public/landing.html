@@ -1032,23 +1032,19 @@ window.addEventListener('scroll',()=>{
   }
 },{passive:true});
 
-// CTAs — redirige vers l'app
-const MEMOIR_APP_URL = '';
-document.getElementById('hero-cta-btn').href = MEMOIR_APP_URL + '/login';
-document.getElementById('nav-cta-btn').href = MEMOIR_APP_URL + '/login';
+// CTAs — redirige vers les pages de formulaire
+document.getElementById('hero-cta-btn').href = '/reserve';
+document.getElementById('nav-cta-btn').href = '/beta';
 document.querySelectorAll('.plan-cta').forEach(btn => {
   if(btn.getAttribute('onclick')?.includes('cta-email')) {
-    btn.setAttribute('onclick', "window.location.href='" + MEMOIR_APP_URL + "/home'");
+    btn.setAttribute('onclick', "window.location.href='/reserve'");
   }
 });
 function submitCTA(){
   const input = document.getElementById('cta-email');
-  const btn = document.getElementById('cta-btn');
   if(!input.value.includes('@')){input.style.borderColor='var(--vermeil)';input.focus();return}
-  btn.textContent = '…';
-  btn.disabled = true;
   const email = input.value.trim().toLowerCase();
-  fetch(MEMOIR_APP_URL + '/api/waitlist', {
+  fetch('/api/waitlist', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({ email, source: 'landing', lang: currentLang })

@@ -47,11 +47,26 @@ export async function GET() {
       .from('streaks')
       .select('user_id, current_streak, longest_streak, total_days, last_written_at')
 
+    // Fetch access requests
+    const { data: accessRequests } = await supabase
+      .from('access_requests')
+      .select('id, email, prenom, nom, motivation, status, created_at')
+      .order('created_at', { ascending: false })
+
+    // Fetch feedbacks
+    const { data: feedbacks } = await supabase
+      .from('feedbacks')
+      .select('id, user_email, page_url, page_context, message, rating, status, created_at')
+      .order('created_at', { ascending: false })
+      .limit(100)
+
     return NextResponse.json({
       users,
       waitlist: waitlist || [],
       projects: projects || [],
       streaks: streaks || [],
+      accessRequests: accessRequests || [],
+      feedbacks: feedbacks || [],
     })
   } catch (err) {
     console.error('[admin/data]', err)
