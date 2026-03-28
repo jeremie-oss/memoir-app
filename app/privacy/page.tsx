@@ -22,8 +22,8 @@ const CONTENT = {
         body: "Lorsque vous utilisez les modes Guidé ou Dictée, vos réponses sont transmises à notre IA (Claude, d'Anthropic) pour générer votre jet d'écriture. Ces échanges ne sont pas conservés entre les séances. L'IA ne se souvient de rien d'une session à l'autre.",
       },
       {
-        heading: 'Stockage local',
-        body: "Vos textes sont sauvegardés localement sur votre appareil (localStorage) et, si vous avez un compte, dans notre base de données sécurisée. Nous utilisons Supabase, hébergé en Europe, avec chiffrement au repos et en transit.",
+        heading: 'Stockage sécurisé — vos données restent en Europe',
+        body: "Vos textes sont sauvegardés localement sur votre appareil (localStorage) et, si vous avez un compte, dans notre base de données sécurisée.\n\nNous utilisons Supabase, dont les serveurs sont hébergés en Irlande (région EU West) — au sein de l'Union Européenne, soumis au RGPD. Toutes les données sont chiffrées au repos (AES-256) et en transit (TLS 1.3). Aucune donnée ne transite vers les États-Unis.",
       },
       {
         heading: 'Aucune publicité. Jamais.',
@@ -49,8 +49,8 @@ const CONTENT = {
         body: "When you use Guided or Dictation modes, your responses are sent to our AI (Claude, by Anthropic) to generate your writing draft. These exchanges are not stored between sessions. The AI remembers nothing from one session to the next.",
       },
       {
-        heading: 'Local storage',
-        body: 'Your texts are saved locally on your device (localStorage) and, if you have an account, in our secure database. We use Supabase, hosted in Europe, with encryption at rest and in transit.',
+        heading: 'Secure storage — your data stays in Europe',
+        body: 'Your texts are saved locally on your device (localStorage) and, if you have an account, in our secure database.\n\nWe use Supabase, with servers hosted in Ireland (EU West region) — within the European Union, subject to GDPR. All data is encrypted at rest (AES-256) and in transit (TLS 1.3). No data is transferred to the United States.',
       },
       {
         heading: 'No advertising. Ever.',
@@ -76,8 +76,8 @@ const CONTENT = {
         body: 'Cuando usa los modos Guiado o Dictado, sus respuestas se envían a nuestra IA (Claude, de Anthropic) para generar su borrador. Estos intercambios no se conservan entre sesiones. La IA no recuerda nada de una sesión a otra.',
       },
       {
-        heading: 'Almacenamiento local',
-        body: 'Sus textos se guardan localmente en su dispositivo (localStorage) y, si tiene una cuenta, en nuestra base de datos segura. Usamos Supabase, alojado en Europa, con cifrado en reposo y en tránsito.',
+        heading: 'Almacenamiento seguro — sus datos permanecen en Europa',
+        body: 'Sus textos se guardan localmente en su dispositivo (localStorage) y, si tiene una cuenta, en nuestra base de datos segura.\n\nUsamos Supabase, con servidores alojados en Irlanda (región EU West) — dentro de la Unión Europea, sujeto al RGPD. Todos los datos están cifrados en reposo (AES-256) y en tránsito (TLS 1.3). Ningún dato se transfiere a Estados Unidos.',
       },
       {
         heading: 'Sin publicidad. Nunca.',
@@ -119,7 +119,7 @@ export default function PrivacyPage() {
           {c.sections.map((s, i) => (
             <div key={i} className="border-l-2 border-[#C4622A]/20 pl-5">
               <h2 className="text-sm font-medium text-[#1C1C2E] mb-2 tracking-wide">{s.heading}</h2>
-              <p className="text-sm text-[#7A4F32]/80 leading-relaxed">{s.body}</p>
+              <p className="text-sm text-[#7A4F32]/80 leading-relaxed whitespace-pre-line">{s.body}</p>
             </div>
           ))}
         </div>
