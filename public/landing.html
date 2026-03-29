@@ -458,7 +458,7 @@ footer p{font-size:12px;color:rgba(245,239,224,.3)}
       <ul class="plan-features" id="feat-2"></ul>
       <button class="plan-cta" onclick="document.getElementById('cta-email').focus()" data-i18n="pricing.p2.cta">Choisir Stilo</button>
     </div>
-    <div class="plan featured reveal reveal-d3">
+    <div class="plan featured reveal reveal-d3" id="plan-3">
       <div class="plan-badge" data-i18n="pricing.p3.badge">Publier</div>
       <p class="plan-name">Plum</p>
       <div class="plan-price" id="price-3"><sup>€</sup>199<sub data-i18n="pricing.sub.yr">/an</sub></div>
@@ -468,7 +468,7 @@ footer p{font-size:12px;color:rgba(245,239,224,.3)}
       <ul class="plan-features" id="feat-3"></ul>
       <button class="plan-cta" onclick="document.getElementById('cta-email').focus()" data-i18n="pricing.p3.cta">Choisir Plum</button>
     </div>
-    <div class="plan reveal reveal-d4">
+    <div class="plan reveal reveal-d4" id="plan-4">
       <div class="plan-badge" data-i18n="pricing.p4.badge">Transmettre</div>
       <p class="plan-name">Gutenberg</p>
       <div class="plan-price" id="price-4"><sup>€</sup>249<sub data-i18n="pricing.sub.yr">/an</sub></div>
@@ -966,6 +966,14 @@ function updatePrices(){
   [1,2].forEach((n,i)=>{
     const el = document.getElementById('price-'+n);
     if(el) el.innerHTML = `<sup>€</sup>${prices[i]}<sub>${sub}</sub>`;
+  });
+  // Plum & Gutenberg — annuel uniquement : griser en mode mensuel
+  [3,4].forEach(n=>{
+    const card = document.getElementById('plan-'+n);
+    if(!card) return;
+    card.style.opacity = billingAnnual ? '' : '0.4';
+    card.style.pointerEvents = billingAnnual ? '' : 'none';
+    card.style.filter = billingAnnual ? '' : 'grayscale(0.4)';
   });
 }
 updatePrices();
