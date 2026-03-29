@@ -77,8 +77,11 @@ export default function ReservePage() {
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center bg-[#FAF8F4] px-4 sm:px-6 py-12">
-      <a href="/" className="font-display text-2xl font-bold tracking-wide text-[#1C1C2E] mb-10 sm:mb-12">
+      <a href="/" className="font-display text-2xl font-bold tracking-wide text-[#1C1C2E] mb-2">
         M<span className="text-[#C4622A]">.</span>emoir
+      </a>
+      <a href="/" className="text-xs text-[#9C8E80] hover:text-[#C4622A] transition-colors mb-10 sm:mb-12">
+        ← Retour
       </a>
 
       <div className="w-full max-w-md">

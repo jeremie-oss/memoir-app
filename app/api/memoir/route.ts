@@ -28,6 +28,17 @@ export async function POST(req: NextRequest) {
     previousPassages?: string[]
     allSessions?: string
   }
+  const { bornYear, chapterNumber } = body as { bornYear?: number | null; chapterNumber?: number }
+
+  // Temporal context for anachronism prevention
+  function getTemporalContext(): string {
+    if (!bornYear) return ''
+    const chNum = chapterNumber ?? 1
+    // Approximate chapter period based on chapter position (7-chapter arc)
+    const periodStart = bornYear + Math.max(0, (chNum - 1) * 8)
+    const periodEnd = periodStart + 10
+    return `TEMPORAL CONTEXT: The author was born in ${bornYear}. This chapter covers approximately ${periodStart}-${periodEnd}. Only reference technology, culture, and events that actually existed during this period. For example: no smartphones before 2007, no Facebook before 2004, no React/Node.js before 2013, no streaming services before 2010.`
+  }
   const langLabel = lang === 'fr' ? 'French' : lang === 'es' ? 'Spanish' : 'English'
 
   let systemPrompt = ''
@@ -46,6 +57,7 @@ export async function POST(req: NextRequest) {
         `Examples: "Où étiez-vous exactement ce jour-là ?" / "Qui était avec vous ?" / "Qu'avez-vous vu en premier ?" / "Que s'est-il passé ensuite ?"`,
         chapter!.prompt ? `Chapter context: ${chapter!.prompt}` : '',
         `Language: ${langLabel}. ONE question only, addressed directly to ${subj}, no preamble.`,
+        getTemporalContext(),
       ].filter(Boolean).join(' ')
     } else {
       systemPrompt = [
@@ -55,6 +67,7 @@ export async function POST(req: NextRequest) {
         `NEVER ask about feelings, emotions, inner states, or the meaning of a memory. Focus only on concrete, tangible, observable details.`,
         `Examples of good questions: "Décrivez l'endroit exact où vous étiez." / "Qui d'autre était présent ?" / "Qu'avez-vous remarqué en premier ?" / "Que s'est-il passé juste après ?"`,
         chapter!.prompt ? `Chapter context: ${chapter!.prompt}` : '',
+        getTemporalContext(),
         `Language: ${langLabel}. ONE question only, direct, no preamble, no "I", just the question itself.`,
       ].filter(Boolean).join(' ')
     }
@@ -84,7 +97,9 @@ export async function POST(req: NextRequest) {
         `Chapter: "${chapter!.title}" - ${chapter!.theme}.`,
         `Style: literary, warm, sensory - like a published biographical memoir. Include specific details mentioned. Write about ${subj} as "il" or "elle" or their name, as befits the language.`,
         `Language: ${langLabel}. Write 180-240 words of prose. No meta-commentary, just the text itself.`,
-      ].join(' ')
+        `STYLE RULE: never use em dashes (—) or en dashes (–). Use commas, parentheses, or restructure the sentence instead.`,
+        getTemporalContext(),
+      ].filter(Boolean).join(' ')
     } else {
       systemPrompt = [
         `You are a literary writer helping ${userName} write their memoir.`,
@@ -92,7 +107,9 @@ export async function POST(req: NextRequest) {
         `Chapter: "${chapter!.title}" - ${chapter!.theme}.`,
         `Style: literary, warm, sensory - like a published memoir. Include specific details they mentioned.`,
         `Language: ${langLabel}. Write 180-240 words of prose. No meta-commentary, just the text itself.`,
-      ].join(' ')
+        `STYLE RULE: never use em dashes (—) or en dashes (–). Use commas, parentheses, or restructure the sentence instead.`,
+        getTemporalContext(),
+      ].filter(Boolean).join(' ')
     }
 
     messages = [
@@ -112,12 +129,14 @@ export async function POST(req: NextRequest) {
         `Rewrite the following raw notes as elegant memoir prose in THIRD PERSON about ${subj}.`,
         `Keep ALL the facts and details - transform the style into literary, flowing biographical prose with sensory detail. Refer to ${subj} by name or as "il"/"elle" as appropriate.`,
         `Language: ${langLabel}. Write only the rewritten text, no commentary. Maintain similar length.`,
+        `STYLE RULE: never use em dashes (—) or en dashes (–). Use commas, parentheses, or restructure instead.`,
       ].join(' ')
     } else {
       systemPrompt = [
         `You are a gentle copy-editor for memoir writing. Your role is to POLISH, not rewrite.`,
         `Lightly improve the following text: fix grammar, smooth awkward phrasing, add a touch of sensory precision where natural.`,
         `STRICT RULES: preserve the author's exact voice, rhythm, and all original ideas. Do NOT restructure sentences. Do NOT add new content or metaphors. Stay as close to the original as possible — only smooth what is rough.`,
+        `STYLE RULE: never use em dashes (—) or en dashes (–). Use commas or parentheses instead.`,
         `Language: ${langLabel}. Output only the polished text, no commentary.`,
       ].join(' ')
     }
@@ -132,6 +151,7 @@ export async function POST(req: NextRequest) {
       `You are a creative writing companion for a memoir app.`,
       `Give 1-2 evocative opening sentences to help ${userName} begin writing a memoir passage about "${chapter!.title}" (${chapter!.theme}).`,
       `Style: beautiful, specific, sensory - like the first lines of a great memoir.`,
+      `STYLE RULE: never use em dashes (—) or en dashes (–).`,
       `Language: ${langLabel}. ONLY the opening sentence(s), nothing else, no attribution.`,
       chapter!.prompt ? `Inspiration: ${chapter!.prompt}` : '',
     ].filter(Boolean).join(' ')
@@ -420,8 +440,18 @@ export async function POST(req: NextRequest) {
 
     if (!response.ok) {
       const err = await response.text()
-      console.error('[memoir/api] Open Router error:', err)
-      return new Response('AI error', { status: 500 })
+      console.error('[memoir/api] OpenRouter error:', response.status, err)
+      try {
+        const errJson = JSON.parse(err)
+        const code = errJson?.error?.code ?? response.status
+        if (response.status === 402 || code === 402) {
+          return new Response('AI_CREDITS_EXHAUSTED', { status: 402 })
+        }
+        if (response.status === 429 || code === 429) {
+          return new Response('AI_RATE_LIMITED', { status: 429 })
+        }
+      } catch { /* not JSON */ }
+      return new Response('AI_ERROR', { status: 500 })
     }
 
     // Forward the SSE stream, extracting text deltas
@@ -465,6 +495,6 @@ export async function POST(req: NextRequest) {
     })
   } catch (err) {
     console.error('[memoir/api]', err)
-    return new Response('AI error', { status: 500 })
+    return new Response('AI_ERROR', { status: 500 })
   }
 }

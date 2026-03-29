@@ -178,6 +178,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </button>
         </div>
 
+        {/* Admin */}
+        <a
+          href="/admin"
+          className="text-[10px] text-[#C4B9A8]/60 hover:text-[#9C8E80] transition-colors tracking-widest uppercase px-1"
+        >
+          admin ↗
+        </a>
+
         {/* User */}
         {mounted && store.userName && (
           <div className="flex items-center gap-2.5">

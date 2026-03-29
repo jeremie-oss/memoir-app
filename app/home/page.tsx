@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useMemoirStore, getNextChapter, getCompletedCount } from '@/stores/memoir'
 import { DAILY_QUOTES_BY_LANG, getChapterDisplay } from '@/lib/mock/trame-data'
 import { T } from '@/lib/i18n'
+import { BookArchitect } from '@/components/BookArchitect'
 
 type PanelId = 'writing' | 'dashboard' | 'book' | 'resources'
 
@@ -26,6 +27,7 @@ export default function HomePage() {
   const [contentVisible, setContentVisible] = useState(true)
   const [activeResource, setActiveResource] = useState(0)
   const [langPending, setLangPending] = useState<'fr' | 'en' | 'es' | null>(null)
+  const [showArchitect, setShowArchitect] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -1303,13 +1305,24 @@ export default function HomePage() {
                     <span className="text-[#9C8E80] text-sm">◻</span>
                     <p className="text-[10px] text-[#9C8E80] tracking-widest uppercase font-medium">{t.panels.book}</p>
                   </div>
-                  <button
-                    onClick={() => expand('book')}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#EDE4D8] text-[#9C8E80] hover:bg-[#C4622A] hover:text-white text-xs"
-                    title={t.actions.expand}
-                  >
-                    {t.actions.expand} ↗
-                  </button>
+                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {store.sessions.length >= 1 && (
+                      <button
+                        onClick={() => setShowArchitect(true)}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#EDE4D8] text-[#9C8E80] hover:bg-[#1C1C2E] hover:text-white text-xs"
+                        title="Architecture du livre"
+                      >
+                        ◈ Architecte
+                      </button>
+                    )}
+                    <button
+                      onClick={() => expand('book')}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#EDE4D8] text-[#9C8E80] hover:bg-[#C4622A] hover:text-white text-xs"
+                      title={t.actions.expand}
+                    >
+                      {t.actions.expand} ↗
+                    </button>
+                  </div>
                 </div>
                 <div className="flex-1 flex flex-col">
                   <MiniBook />
@@ -1395,6 +1408,9 @@ export default function HomePage() {
           </div>
         )}
       </main>
+
+      {/* BookArchitect modal */}
+      {showArchitect && <BookArchitect onClose={() => setShowArchitect(false)} />}
     </div>
   )
 }

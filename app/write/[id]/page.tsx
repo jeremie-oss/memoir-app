@@ -8,6 +8,7 @@ import { WRITING_MODES } from '@/lib/i18n'
 import { renderMd } from '@/lib/renderMd'
 import { buildBookState, serializeBookState, getRecentPassages } from '@/lib/ai/book-state'
 import { runArchivisteUpdate, runArchivisteStyle, runRelecteurReview } from '@/lib/ai/archiviste'
+import { AgentReviewer } from '@/components/AgentReviewer'
 
 type Phase = 'ritual' | 'writing' | 'end'
 type GuidePhase = 'chat' | 'write'
@@ -71,6 +72,13 @@ const WL = {
     durationHint: 'Recommandé : 15–20 min pour commencer',
     chapterPickerTitle: 'Vos chapitres',
     writing: 'En cours',
+    offlineBanner: 'Hors ligne · Votre texte est sauvegardé automatiquement',
+    aiRateLimit: 'Service IA momentanément surchargé — réessayez dans quelques secondes',
+    aiCredits: 'Quota IA atteint — contactez le support',
+    aiError: 'Service IA indisponible — vous pouvez continuer à écrire',
+    guideOffline: 'Mode guidé indisponible hors ligne',
+    switchToLibre: 'Écrire en mode Libre →',
+    reformOffline: 'Reformulation indisponible — votre texte original est conservé',
   },
   en: {
     chapter: 'Chapter',
@@ -123,6 +131,13 @@ const WL = {
     durationHint: 'Recommended: 15–20 min to start',
     chapterPickerTitle: 'Your chapters',
     writing: 'Current',
+    offlineBanner: 'Offline · Your text is saved automatically',
+    aiRateLimit: 'AI service temporarily overloaded — retry in a few seconds',
+    aiCredits: 'AI quota reached — contact support',
+    aiError: 'AI service unavailable — you can keep writing',
+    guideOffline: 'Guided mode unavailable offline',
+    switchToLibre: 'Write in Libre mode →',
+    reformOffline: 'Reformulation unavailable — your original text is preserved',
   },
   es: {
     chapter: 'Capítulo',
@@ -175,6 +190,13 @@ const WL = {
     durationHint: 'Recomendado: 15–20 min para empezar',
     chapterPickerTitle: 'Sus capítulos',
     writing: 'En curso',
+    offlineBanner: 'Sin conexión · Tu texto se guarda automáticamente',
+    aiRateLimit: 'Servicio IA momentáneamente sobrecargado — vuelve a intentar en unos segundos',
+    aiCredits: 'Cuota IA alcanzada — contacta soporte',
+    aiError: 'Servicio IA no disponible — puedes seguir escribiendo',
+    guideOffline: 'Modo guiado no disponible sin conexión',
+    switchToLibre: 'Escribir en modo Libre →',
+    reformOffline: 'Reformulación no disponible — tu texto original está conservado',
   },
 }
 
@@ -269,14 +291,20 @@ export default function WritePage() {
   const [showNotes, setShowNotes] = useState(false)
   const [chapterNotes, setChapterNotes] = useState('')
 
-  // Save error feedback
+  // Save feedback
   const [saveError, setSaveError] = useState(false)
+  const [isSaved, setIsSaved] = useState(false)
 
   // Chapter picker
   const [showChapterPicker, setShowChapterPicker] = useState(false)
 
   // Mode sans IA (Mode concentré)
   const [noAI, setNoAI] = useState(false)
+
+  // AI error / offline state
+  const [aiErrorType, setAiErrorType] = useState<'rate_limit' | 'credits' | 'error' | null>(null)
+  const [isOffline, setIsOffline] = useState(false)
+  const aiFailCountRef = useRef(0)
 
   // Guide annotations (4.3)
   const [showGuideAnnotations, setShowGuideAnnotations] = useState(false)
@@ -345,10 +373,19 @@ export default function WritePage() {
       setTimeout(() => textareaRef.current?.focus(), 150)
     }
 
+    // Offline detection
+    const handleOnline = () => setIsOffline(false)
+    const handleOffline = () => setIsOffline(true)
+    setIsOffline(!navigator.onLine)
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+
     return () => {
       recognitionRef.current?.stop()
       if (timerRef.current) clearInterval(timerRef.current)
       if (autoSaveRef.current) clearInterval(autoSaveRef.current)
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -409,6 +446,10 @@ export default function WritePage() {
 
   // ── Core streaming function ──────────────────────────────────
   async function streamAI(payload: object): Promise<string> {
+    if (isOffline) {
+      setAiErrorType('error')
+      return ''
+    }
     setAiLoading(true)
     setAiStreaming('')
     const controller = new AbortController()
@@ -423,8 +464,27 @@ export default function WritePage() {
       clearTimeout(timeout)
       if (!res.ok || !res.body) {
         setAiLoading(false)
+        if (res.status === 402) {
+          setAiErrorType('credits')
+          aiFailCountRef.current += 1
+        } else if (res.status === 429) {
+          setAiErrorType('rate_limit')
+          aiFailCountRef.current += 1
+          // Auto-clear rate limit message after 10s
+          setTimeout(() => setAiErrorType(prev => prev === 'rate_limit' ? null : prev), 10000)
+        } else {
+          setAiErrorType('error')
+          aiFailCountRef.current += 1
+        }
+        // After 3 consecutive failures, auto-enable noAI mode
+        if (aiFailCountRef.current >= 3) {
+          setNoAI(true)
+        }
         return ''
       }
+      // Clear any previous error on success
+      setAiErrorType(null)
+      aiFailCountRef.current = 0
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
       setAiLoading(false)
@@ -441,6 +501,14 @@ export default function WritePage() {
       clearTimeout(timeout)
       setAiLoading(false)
       setAiStreaming('')
+      // Network error could mean offline
+      if (!navigator.onLine) {
+        setIsOffline(true)
+      } else {
+        setAiErrorType('error')
+        aiFailCountRef.current += 1
+        if (aiFailCountRef.current >= 3) setNoAI(true)
+      }
       return ''
     }
   }
@@ -459,6 +527,11 @@ export default function WritePage() {
   }
 
   async function startGuide() {
+    // If offline or noAI, silently switch to libre
+    if (isOffline || noAI) {
+      setMode('libre')
+      return
+    }
     const { bookStateText, emptyChapters, gaps, sessionSummaries } = getBookContext()
     const question = await streamAI({
       action: 'guide_question',
@@ -472,8 +545,15 @@ export default function WritePage() {
       emptyChapters,
       gaps,
       sessionSummaries,
+      bornYear: store.bornYear,
+      chapterNumber: chapter!.number,
     })
-    if (question) setGuideConvo([{ role: 'assistant', content: question }])
+    // If AI failed, switch to libre automatically
+    if (!question) {
+      setMode('libre')
+    } else {
+      setGuideConvo([{ role: 'assistant', content: question }])
+    }
   }
 
   async function sendGuideAnswer() {
@@ -495,6 +575,8 @@ export default function WritePage() {
       emptyChapters,
       gaps,
       sessionSummaries,
+      bornYear: store.bornYear,
+      chapterNumber: chapter!.number,
     })
     if (question) setGuideConvo([...newConvo, { role: 'assistant', content: question }])
   }
@@ -513,6 +595,8 @@ export default function WritePage() {
       styleFingerprint: store.styleFingerprint,
       previousPassages,
       characters: store.characters,
+      bornYear: store.bornYear,
+      chapterNumber: chapter!.number,
     })
     if (draft) {
       setContent(draft)
@@ -524,6 +608,8 @@ export default function WritePage() {
   // ── Dictée: reformulate ──────────────────────────────────────
   async function reformulate() {
     if (!content.trim() || aiLoading) return
+    // If offline or noAI, skip silently — original text stays
+    if (isOffline || noAI) return
     setReformText('')
     setShowReform(true)
     const result = await streamAI({
@@ -535,7 +621,12 @@ export default function WritePage() {
       isAccomp,
       subjectName: isAccomp ? subjectName : undefined,
     })
-    setReformText(result)
+    // If AI failed, close panel and keep original text
+    if (!result) {
+      setShowReform(false)
+    } else {
+      setReformText(result)
+    }
   }
 
   function useReformulated() {
@@ -548,6 +639,8 @@ export default function WritePage() {
   // ── Libre: inspire ───────────────────────────────────────────
   async function inspire() {
     if (aiLoading) return
+    // If offline or noAI, don't open panel at all
+    if (isOffline || noAI) return
     setInspireText('')
     setShowInspire(true)
     const result = await streamAI({
@@ -556,7 +649,12 @@ export default function WritePage() {
       userName: store.userName,
       lang,
     })
-    setInspireText(result)
+    // If AI failed, close the panel (error is shown in banner)
+    if (!result) {
+      setShowInspire(false)
+    } else {
+      setInspireText(result)
+    }
   }
 
   function useInspiration() {
@@ -696,7 +794,9 @@ export default function WritePage() {
           })
         }
 
-        setTimeout(() => router.push('/home'), 400)
+        // Stay on end page — show AgentReviewer when suggestions arrive
+        setIsSaved(true)
+        setIsSaving(false)
       })
   }
 
@@ -906,7 +1006,7 @@ export default function WritePage() {
 
             <button
               onClick={() => router.push('/home')}
-              className="block mt-4 mx-auto text-xs text-[#9C8E80]/30 hover:text-[#9C8E80] transition-colors"
+              className="block mt-4 mx-auto text-xs text-[#9C8E80] hover:text-[#C4622A] transition-colors"
             >
               {wl.backHome}
             </button>
@@ -983,6 +1083,23 @@ export default function WritePage() {
                   {wl.backHome}
                 </button>
               </header>
+
+              {/* Guide offline / error banner */}
+              {(isOffline || aiErrorType) && guideConvo.length === 0 && (
+                <div className="mx-auto max-w-2xl w-full px-5 pt-4">
+                  <div className="flex items-center justify-between gap-3 bg-white/5 rounded-xl px-4 py-3 border border-white/10">
+                    <p className="text-xs text-[#C4B9A8] leading-relaxed">
+                      {isOffline ? wl.guideOffline : wl.aiError}
+                    </p>
+                    <button
+                      onClick={() => { store.setWritingMode('libre'); setMode('libre') }}
+                      className="text-xs text-[#C4622A] hover:underline shrink-0"
+                    >
+                      {wl.switchToLibre}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Conversation */}
               <div
@@ -1086,11 +1203,36 @@ export default function WritePage() {
                 </div>
               )}
 
+              {/* Offline banner */}
+              {isOffline && (
+                <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-center gap-2 bg-[#1C1C2E]/90 backdrop-blur-sm px-4 py-3 border-t border-white/10">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#C4B9A8] shrink-0" />
+                  <p className="text-xs text-[#C4B9A8]">{wl.offlineBanner}</p>
+                </div>
+              )}
+
+              {/* AI error banner */}
+              {!isOffline && aiErrorType && (
+                <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between gap-3 bg-[#1C1C2E]/90 backdrop-blur-sm px-5 py-3 border-t border-white/10">
+                  <p className="text-xs text-[#C4B9A8]">
+                    {aiErrorType === 'rate_limit' ? wl.aiRateLimit
+                      : aiErrorType === 'credits' ? wl.aiCredits
+                      : wl.aiError}
+                  </p>
+                  <button
+                    onClick={() => setAiErrorType(null)}
+                    className="text-[10px] text-[#9C8E80]/60 hover:text-[#9C8E80] shrink-0"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
               {/* Header */}
               <header className="flex items-center justify-between px-6 py-4 shrink-0">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <button onClick={() => router.push('/home')} className="text-[10px] text-[#C4B9A8] hover:text-[#9C8E80] transition-colors shrink-0">
-                    {lang === 'fr' ? 'Accueil' : lang === 'es' ? 'Inicio' : 'Home'}
+                  <button onClick={() => router.push('/home')} className="text-xs text-[#9C8E80] hover:text-[#C4622A] transition-colors shrink-0">
+                    ← {lang === 'fr' ? 'Accueil' : lang === 'es' ? 'Inicio' : 'Home'}
                   </button>
                   <span className="text-[#C4B9A8] text-[10px]">/</span>
                   <span className="font-display text-sm italic text-[#7A4F32] truncate">{chapter.title}</span>
@@ -1504,26 +1646,81 @@ export default function WritePage() {
               )}
             </div>
 
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="w-full bg-[#C4622A] text-white font-medium text-sm py-4 rounded-full hover:opacity-90 transition-all shadow-lg shadow-[#C4622A]/25 disabled:opacity-60 mb-3"
-            >
-              {isSaving ? wl.saving : wl.save}
-            </button>
+            {!isSaved ? (
+              <>
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="w-full bg-[#C4622A] text-white font-medium text-sm py-4 rounded-full hover:opacity-90 transition-all shadow-lg shadow-[#C4622A]/25 disabled:opacity-60 mb-3"
+                >
+                  {isSaving ? wl.saving : wl.save}
+                </button>
 
-            <button
-              onClick={() => {
-                setFadeIn(false)
-                setTimeout(() => { setPhase('writing'); setFadeIn(true) }, 450)
-              }}
-              className="w-full border border-[#EDE4D8] text-[#1C1C2E] text-sm py-4 rounded-full hover:border-[#9C8E80] transition-all"
-            >
-              {wl.continueWriting}
-            </button>
+                <button
+                  onClick={() => {
+                    setFadeIn(false)
+                    setTimeout(() => { setPhase('writing'); setFadeIn(true) }, 450)
+                  }}
+                  className="w-full border border-[#EDE4D8] text-[#1C1C2E] text-sm py-4 rounded-full hover:border-[#9C8E80] transition-all"
+                >
+                  {wl.continueWriting}
+                </button>
+              </>
+            ) : (
+              <>
+                {/* Post-save confirmation */}
+                <div className="flex items-center justify-center gap-2 mb-6">
+                  <span className="w-2 h-2 rounded-full bg-[#C4622A]" />
+                  <p className="text-xs text-[#7A4F32]">
+                    {lang === 'fr' ? 'Sauvegardé' : lang === 'es' ? 'Guardado' : 'Saved'}
+                  </p>
+                </div>
+
+                {/* Relecteur pending indicator */}
+                {store.agentSuggestions.filter(s => s.agentId === 'relecteur' && !s.dismissed).length === 0 && (
+                  <div className="flex items-center gap-2 mb-5 justify-center">
+                    <span className="w-1 h-1 rounded-full bg-[#9C8E80] animate-pulse" />
+                    <p className="text-[10px] text-[#9C8E80] italic">
+                      {lang === 'fr' ? "L'Œil du lecteur analyse votre texte…"
+                        : lang === 'es' ? 'El lector analiza tu texto…'
+                        : 'Reader\'s eye is reviewing your text…'}
+                    </p>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => router.push('/home')}
+                  className="w-full bg-[#1C1C2E] text-[#FAF8F4] font-medium text-sm py-4 rounded-full hover:opacity-90 transition-all mb-3"
+                >
+                  {lang === 'fr' ? "Retour à l'accueil" : lang === 'es' ? 'Volver al inicio' : 'Back to home'}
+                </button>
+
+                <button
+                  onClick={() => {
+                    setIsSaved(false)
+                    setFadeIn(false)
+                    setTimeout(() => { setPhase('writing'); setFadeIn(true) }, 450)
+                  }}
+                  className="w-full border border-[#EDE4D8] text-[#1C1C2E] text-sm py-4 rounded-full hover:border-[#9C8E80] transition-all"
+                >
+                  {wl.continueWriting}
+                </button>
+              </>
+            )}
+
+            {saveError && (
+              <p className="text-xs text-red-400 text-center mt-3">
+                {lang === 'fr' ? 'Erreur de sauvegarde — votre texte est conservé localement'
+                  : lang === 'es' ? 'Error al guardar — tu texto está guardado localmente'
+                  : 'Save error — your text is kept locally'}
+              </p>
+            )}
           </div>
         </main>
       )}
+
+      {/* AgentReviewer — flottant sur la page de fin après sauvegarde */}
+      {phase === 'end' && isSaved && <AgentReviewer />}
     </div>
   )
 }

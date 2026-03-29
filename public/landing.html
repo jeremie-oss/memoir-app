@@ -265,6 +265,7 @@ footer p{font-size:12px;color:rgba(245,239,224,.3)}
       <button class="lang-btn" onclick="switchLang('en')">EN</button>
       <button class="lang-btn" onclick="switchLang('es')">ES</button>
     </div>
+    <a href="/login" class="nav-link" id="nav-login-btn" data-i18n="nav.login">Se connecter</a>
     <a href="#cta" class="nav-cta" id="nav-cta-btn" data-i18n="nav.cta">Accès anticipé</a>
   </div>
 </nav>
@@ -506,9 +507,9 @@ footer p{font-size:12px;color:rgba(245,239,224,.3)}
 <footer>
   <a href="#" class="footer-logo">M<em>.</em>emoir</a>
   <div class="footer-links">
-    <a href="#" data-i18n="footer.legal">Mentions légales</a>
-    <a href="#" data-i18n="footer.privacy">Confidentialité</a>
-    <a href="#" data-i18n="footer.contact">Contact</a>
+    <a href="/mentions-legales" data-i18n="footer.legal">Mentions légales</a>
+    <a href="/privacy" data-i18n="footer.privacy">Confidentialité</a>
+    <a href="/contact" data-i18n="footer.contact">Contact</a>
   </div>
   <p data-i18n="footer.copy">© 2025 Memoir · Tous droits réservés</p>
 </footer>
@@ -519,7 +520,7 @@ footer p{font-size:12px;color:rgba(245,239,224,.3)}
 ══════════════════════════════════════════ */
 const T = {
 fr:{
-  "nav.how":"Comment ça marche","nav.who":"Pour qui","nav.pricing":"Tarifs","nav.cta":"Accès anticipé",
+  "nav.how":"Comment ça marche","nav.who":"Pour qui","nav.pricing":"Tarifs","nav.login":"Se connecter","nav.cta":"Accès anticipé",
   "hero.label":"Compagnon · Coach · Éditeur · Imprimeur",
   "hero.h1":"Votre histoire<br>mérite <em>d'exister.</em>",
   "hero.sub":"Memoir vous accompagne de la première phrase jusqu'à la dernière page — <strong>à voix haute, à votre rythme, dans votre style.</strong>",
@@ -557,7 +558,7 @@ fr:{
 },
 
 en:{
-  "nav.how":"How it works","nav.who":"Who it's for","nav.pricing":"Pricing","nav.cta":"Early access",
+  "nav.how":"How it works","nav.who":"Who it's for","nav.pricing":"Pricing","nav.login":"Sign in","nav.cta":"Early access",
   "hero.label":"Companion · Coach · Editor · Publisher",
   "hero.h1":"Your story<br>deserves <em>to exist.</em>",
   "hero.sub":"Memoir guides you from the first sentence to the last page — <strong>out loud, at your pace, in your voice.</strong>",
@@ -595,7 +596,7 @@ en:{
 },
 
 es:{
-  "nav.how":"Cómo funciona","nav.who":"Para quién","nav.pricing":"Precios","nav.cta":"Acceso anticipado",
+  "nav.how":"Cómo funciona","nav.who":"Para quién","nav.pricing":"Precios","nav.login":"Iniciar sesión","nav.cta":"Acceso anticipado",
   "hero.label":"Compañero · Coach · Editor · Impresor",
   "hero.h1":"Tu historia<br>merece <em>existir.</em>",
   "hero.sub":"Memoir te acompaña desde la primera frase hasta la última página — <strong>en voz alta, a tu ritmo, con tu estilo.</strong>",

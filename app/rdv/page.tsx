@@ -175,7 +175,7 @@ export default function RdvPage() {
         </span>
         <button
           onClick={() => router.push('/home')}
-          className="text-xs text-[#9C8E80]/40 hover:text-[#9C8E80] transition-colors"
+          className="text-xs text-[#9C8E80] hover:text-[#FAF8F4] transition-colors"
         >
           {wl.goHome}
         </button>

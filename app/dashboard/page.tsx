@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import AppLayout from '@/components/AppLayout'
 import { useMemoirStore, getCompletedCount } from '@/stores/memoir'
+import { BookArchitect } from '@/components/BookArchitect'
 
 type Badge = {
   id: string
@@ -17,6 +18,7 @@ const WEEKLY_GOAL = 300
 export default function DashboardPage() {
   const store = useMemoirStore()
   const [mounted, setMounted] = useState(false)
+  const [showArchitect, setShowArchitect] = useState(false)
 
   useEffect(() => { setMounted(true) }, [])
 
@@ -26,6 +28,19 @@ export default function DashboardPage() {
   const completedCount = getCompletedCount(store.chapters)
   const totalChapters = store.chapters.length
   const longestSession = Math.max(0, ...store.sessions.map(s => s.wordCount))
+  const estimatedPages = totalWords > 0 ? Math.max(1, Math.round(totalWords / 250)) : 0
+
+  // Plan tier thresholds (Crayon/Stilo/Plum/Gutenberg)
+  const TIERS = [
+    { name: 'Crayon', limit: 10000 },
+    { name: 'Stilo', limit: 40000 },
+    { name: 'Plum', limit: 80000 },
+    { name: 'Gutenberg', limit: null },
+  ]
+  const currentTierIdx = TIERS.findIndex(t => t.limit === null || totalWords < t.limit)
+  const currentTier = TIERS[Math.max(0, currentTierIdx)]
+  const nextTier = TIERS[currentTierIdx + 1]
+  const tierFillPct = currentTier.limit ? Math.min(100, (totalWords / currentTier.limit) * 100) : 100
 
   // Mots cette semaine
   const weekAgo = new Date()
@@ -93,6 +108,7 @@ export default function DashboardPage() {
   }
 
   return (
+    <>
     <AppLayout>
       <div className="min-h-screen bg-[#FAF8F4]">
         <div className="max-w-2xl mx-auto px-6 py-10">
@@ -110,6 +126,34 @@ export default function DashboardPage() {
               &ldquo;{getEncouragement()}&rdquo;
             </p>
           </div>
+
+          {/* Volume du livre */}
+          {totalWords > 0 && (
+            <div className="mb-6 bg-white rounded-2xl border border-[#EDE4D8] p-5">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <p className="text-sm font-medium text-[#1C1C2E]">Volume du livre</p>
+                  <p className="text-xs text-[#9C8E80] mt-0.5">
+                    {totalWords.toLocaleString('fr-FR')} mots · environ {estimatedPages} page{estimatedPages > 1 ? 's' : ''}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-medium text-[#C4622A]">{currentTier.name}</p>
+                  {nextTier && currentTier.limit && (
+                    <p className="text-[10px] text-[#9C8E80] mt-0.5">
+                      {(currentTier.limit - totalWords).toLocaleString('fr-FR')} mots pour {nextTier.name}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="h-1.5 bg-[#EDE4D8] rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-[#C4622A]/60 rounded-full transition-all duration-700"
+                  style={{ width: `${tierFillPct}%` }}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Objectif de la semaine */}
           <div className="mb-6 bg-white rounded-2xl border border-[#EDE4D8] p-5">
@@ -132,7 +176,18 @@ export default function DashboardPage() {
 
           {/* Progression des chapitres */}
           <div className="mb-6 bg-white rounded-2xl border border-[#EDE4D8] p-5">
-            <p className="text-sm font-medium text-[#1C1C2E] mb-4">Progression du livre</p>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-medium text-[#1C1C2E]">Progression du livre</p>
+              {store.sessions.length >= 1 && (
+                <button
+                  onClick={() => setShowArchitect(true)}
+                  className="flex items-center gap-1.5 text-xs text-[#9C8E80] hover:text-[#1C1C2E] transition-colors"
+                >
+                  <span className="text-[#C4622A]/60">◈</span>
+                  Architecte
+                </button>
+              )}
+            </div>
             <div className="flex gap-2">
               {store.chapters.map((ch) => (
                 <div
@@ -182,14 +237,15 @@ export default function DashboardPage() {
           {/* Stats */}
           <div className="grid grid-cols-2 gap-4 mb-8">
             {[
-              { label: 'Mots écrits', value: totalWords.toLocaleString('fr-FR') },
-              { label: 'Sessions', value: store.sessions.length.toString() },
-              { label: 'Plus longue session', value: longestSession > 0 ? `${longestSession} mots` : '—' },
-              { label: 'Série actuelle', value: store.currentStreak > 0 ? `${store.currentStreak} jour${store.currentStreak > 1 ? 's' : ''}` : '—' },
+              { label: 'Mots écrits', value: totalWords.toLocaleString('fr-FR'), sub: estimatedPages > 0 ? `~${estimatedPages} pages` : undefined },
+              { label: 'Sessions', value: store.sessions.length.toString(), sub: undefined },
+              { label: 'Plus longue session', value: longestSession > 0 ? `${longestSession} mots` : '—', sub: undefined },
+              { label: 'Série actuelle', value: store.currentStreak > 0 ? `${store.currentStreak} jour${store.currentStreak > 1 ? 's' : ''}` : '—', sub: undefined },
             ].map(stat => (
               <div key={stat.label} className="bg-white rounded-xl border border-[#EDE4D8] px-4 py-4">
                 <p className="text-xs text-[#9C8E80] mb-1">{stat.label}</p>
                 <p className="font-display text-2xl font-light italic text-[#1C1C2E]">{stat.value}</p>
+                {stat.sub && <p className="text-[10px] text-[#9C8E80] mt-0.5">{stat.sub}</p>}
               </div>
             ))}
           </div>
@@ -197,5 +253,9 @@ export default function DashboardPage() {
         </div>
       </div>
     </AppLayout>
+
+    {/* BookArchitect modal */}
+    {showArchitect && <BookArchitect onClose={() => setShowArchitect(false)} />}
+  </>
   )
 }
