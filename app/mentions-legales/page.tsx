@@ -111,8 +111,8 @@ export default function MentionsLegalesPage() {
       <div className="pointer-events-none fixed inset-0 opacity-[0.025]" style={GRAIN_STYLE} />
 
       <div className="max-w-2xl mx-auto px-6 py-12">
-        <button
-          onClick={() => router.back()}
+        <a
+          href="/"
           className="text-xs text-[#9C8E80] hover:text-[#7A4F32] transition-colors mb-10 block"
         >
           {c.back}
