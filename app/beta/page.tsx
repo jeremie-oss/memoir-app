@@ -113,12 +113,20 @@ export default function BetaPage() {
           </button>
         </form>
 
-        <p className="text-center text-[#9C8E80] text-sm mt-8">
-          Vous préférez être notifié au lancement ?{' '}
-          <Link href="/reserve" className="text-[#C4622A] underline underline-offset-2 hover:opacity-80">
-            Réserver ma place
+        <div className="flex flex-col items-center gap-3 mt-8">
+          <Link
+            href="/login"
+            className="w-full py-3 rounded-full border-2 border-[#EDE4D8] text-[#7A4F32] font-medium text-base text-center transition-all hover:border-[#C4622A] hover:text-[#C4622A]"
+          >
+            J&apos;ai déjà un compte — Me connecter
           </Link>
-        </p>
+          <p className="text-[#9C8E80] text-sm">
+            Vous préférez être notifié au lancement ?{' '}
+            <Link href="/reserve" className="text-[#C4622A] underline underline-offset-2 hover:opacity-80">
+              Réserver ma place
+            </Link>
+          </p>
+        </div>
       </div>
     </main>
   )
