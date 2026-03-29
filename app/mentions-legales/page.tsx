@@ -116,7 +116,7 @@ export default function MentionsLegalesPage() {
           className="text-xs text-[#9C8E80] hover:text-[#7A4F32] transition-colors mb-10 block"
         >
           {c.back}
-        </button>
+        </a>
 
         <div className="flex items-center gap-3 mb-10">
           <span className="text-[#C4622A] text-lg">◈</span>
