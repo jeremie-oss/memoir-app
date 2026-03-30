@@ -65,8 +65,8 @@ export default function TramePage() {
           </h1>
           <p className="mt-4 text-[#7A4F32] text-sm leading-relaxed max-w-md mx-auto">
             {store.trameCustom
-              ? 'Votre trame personnalisee. Chaque chapitre vous attend.'
-              : 'Sept chapitres. Sept portes vers votre histoire. Chacun d\'eux vous attend, a votre rythme.'}
+              ? 'Votre trame personnalisée. Chaque chapitre vous attend.'
+              : "Sept chapitres. Sept portes vers votre histoire. Chacun d'eux vous attend, à votre rythme."}
           </p>
 
           {/* Entry points for customization */}

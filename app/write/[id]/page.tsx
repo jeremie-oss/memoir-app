@@ -101,16 +101,16 @@ const WL = {
     micUnsupported: 'Dictation not available in this browser',
     answerPlaceholder: 'Your answer…',
     sendAnswer: 'Send →',
-    createDraft: 'See what this gives →',
+    createDraft: 'Generate draft →',
     thinking: 'AI thinking…',
-    draftNote: 'Here is your first draft - edit it freely',
-    reformulate: '◎  Beautify my text',
-    reformTitle: 'Your rewritten text',
+    draftNote: 'Here is your first draft — edit it freely',
+    reformulate: '◎  Polish my text',
+    reformTitle: 'Your enhanced text',
     reformDesc: 'Your original is preserved. Click "Use this" to replace.',
     useThis: 'Use this text',
     closePanel: 'Close',
     inspire: '✦  Inspire me',
-    inspireTitle: 'An opening to get you started',
+    inspireTitle: 'A prompt to spark your writing',
     inspireUse: 'Add to text',
     minHint: '(answer more to enrich your draft)',
     captureTitle: 'Receive your text by email',
@@ -144,10 +144,10 @@ const WL = {
     chooseMode: 'Elige tu ritual',
     chooseDuration: 'Duración',
     durationFree: 'Libre',
-    beginSeance: 'Comenzar mi Séance',
+    beginSeance: 'Comenzar mi sesión',
     backHome: '← Volver al inicio',
     finish: 'Terminar →',
-    finishSession: 'Terminar Séance',
+    finishSession: 'Terminar sesión',
     placeholder: 'Empieza a escribir…',
     wordsUnit: (n: number) => `${n} palabra${n > 1 ? 's' : ''}`,
     wordsToday: 'palabras de tu Pluma',
@@ -163,7 +163,7 @@ const WL = {
     createDraft: 'Ver qué sale →',
     thinking: 'La IA piensa…',
     draftNote: 'Aquí está tu primer borrador - edítalo libremente',
-    reformulate: '◎  Embellecer mi texto',
+    reformulate: '◎  Mejorar mi texto',
     reformTitle: 'Tu texto reescrito',
     reformDesc: 'Tu original está conservado. Haz clic en "Usar" para reemplazar.',
     useThis: 'Usar este texto',
@@ -188,7 +188,7 @@ const WL = {
     changeChapter: '≡ Elegir un capítulo',
     shortMsg: 'Hasta pocas palabras cuentan. Cada frase es una huella.',
     durationHint: 'Recomendado: 15–20 min para empezar',
-    chapterPickerTitle: 'Sus capítulos',
+    chapterPickerTitle: 'Tus capítulos',
     writing: 'En curso',
     offlineBanner: 'Sin conexión · Tu texto se guarda automáticamente',
     aiRateLimit: 'Servicio IA momentáneamente sobrecargado — vuelve a intentar en unos segundos',
@@ -294,6 +294,7 @@ export default function WritePage() {
   // Save feedback
   const [saveError, setSaveError] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
+  const [archivisteEnriched, setArchivisteEnriched] = useState<{ chars: number; events: number } | null>(null)
 
   // Chapter picker
   const [showChapterPicker, setShowChapterPicker] = useState(false)
@@ -762,14 +763,17 @@ export default function WritePage() {
         // Archiviste: update Book State with new characters, events, contradictions
         runArchivisteUpdate(savedStore, savedContent, savedLang).then(result => {
           if (!result) return
+          let newChars = 0
+          let newEvents = 0
           result.characters.forEach(c => {
             const exists = savedStore.characters.some(ch => ch.name.toLowerCase() === c.name.toLowerCase())
-            if (!exists) savedStore.addCharacter({ name: c.name, relation: c.relation, period: c.period, notes: '' })
+            if (!exists) { savedStore.addCharacter({ name: c.name, relation: c.relation, period: c.period, notes: '' }); newChars++ }
           })
           result.events.forEach(e => {
             const exists = savedStore.timelineEvents.some(ev => ev.title.toLowerCase() === e.title.toLowerCase())
-            if (!exists) savedStore.addTimelineEvent({ date: e.date, title: e.title, description: e.description })
+            if (!exists) { savedStore.addTimelineEvent({ date: e.date, title: e.title, description: e.description }); newEvents++ }
           })
+          if (newChars > 0 || newEvents > 0) setArchivisteEnriched({ chars: newChars, events: newEvents })
         })
 
         // Relecteur: review new passage in context of whole book
@@ -1684,6 +1688,39 @@ export default function WritePage() {
                       {lang === 'fr' ? "L'Œil du lecteur analyse votre texte…"
                         : lang === 'es' ? 'El lector analiza tu texto…'
                         : 'Reader\'s eye is reviewing your text…'}
+                    </p>
+                  </div>
+                )}
+
+                {/* Archiviste enrichment feedback */}
+                {archivisteEnriched ? (
+                  <div className="flex items-center gap-2 mb-5 justify-center">
+                    <span className="text-[#C4622A]/50 text-[8px]">◈</span>
+                    <p className="text-[10px] text-[#9C8E80]">
+                      {lang === 'fr'
+                        ? `Archiviste a enrichi : ${[
+                            archivisteEnriched.chars > 0 ? `${archivisteEnriched.chars} personnage${archivisteEnriched.chars > 1 ? 's' : ''}` : '',
+                            archivisteEnriched.events > 0 ? `${archivisteEnriched.events} date${archivisteEnriched.events > 1 ? 's' : ''}` : '',
+                          ].filter(Boolean).join(', ')}`
+                        : lang === 'es'
+                        ? `Archivista enriqueció : ${[
+                            archivisteEnriched.chars > 0 ? `${archivisteEnriched.chars} personaje${archivisteEnriched.chars > 1 ? 's' : ''}` : '',
+                            archivisteEnriched.events > 0 ? `${archivisteEnriched.events} fecha${archivisteEnriched.events > 1 ? 's' : ''}` : '',
+                          ].filter(Boolean).join(', ')}`
+                        : `Archivist enriched: ${[
+                            archivisteEnriched.chars > 0 ? `${archivisteEnriched.chars} character${archivisteEnriched.chars > 1 ? 's' : ''}` : '',
+                            archivisteEnriched.events > 0 ? `${archivisteEnriched.events} date${archivisteEnriched.events > 1 ? 's' : ''}` : '',
+                          ].filter(Boolean).join(', ')}`
+                      }
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 mb-5 justify-center">
+                    <span className="w-1 h-1 rounded-full bg-[#9C8E80]/40 animate-pulse" />
+                    <p className="text-[10px] text-[#9C8E80]/60 italic">
+                      {lang === 'fr' ? "L'Archiviste met à jour la trame…"
+                        : lang === 'es' ? 'El Archivista actualiza la trama…'
+                        : 'Archivist updating the timeline…'}
                     </p>
                   </div>
                 )}

@@ -5,7 +5,7 @@ import { createClient as createServerSupabase } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 
 const ADMIN_EMAILS = ['jeremiebenhamou@gmail.com', 'jeremie@the-tech-nation.com']
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
 
     // Envoyer email de bienvenue avec les identifiants
     try {
-      await resend.emails.send({
+      await resend?.emails.send({
         from: 'M.emoir <noreply@the-tech-nation.com>',
         to: email,
         subject: 'Votre accès beta M.emoir',

@@ -10,7 +10,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
-const resend = new Resend(process.env.RESEND_API_KEY)
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 
 export async function POST(req: NextRequest) {
   const serverSb = await createServerSupabase()
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   const { error } = await supabase.auth.admin.updateUserById(userId, { password: newPassword })
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
 
-  await resend.emails.send({
+  await resend?.emails.send({
     from: 'M.emoir <noreply@the-tech-nation.com>',
     to: email,
     subject: 'Vos identifiants M.emoir',

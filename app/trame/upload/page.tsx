@@ -13,8 +13,8 @@ const GRAIN = {
 const ANALYZE_MSGS = [
   'Je lis vos notes...',
   'Je cherche les fils de votre histoire...',
-  'J\'identifie les themes et personnages...',
-  'Je prepare vos graines memorielles...',
+  "J'identifie les thèmes et personnages...",
+  'Je prépare vos graines mémorielles...',
 ]
 
 type Phase = 'select' | 'analyzing' | 'seeds'
@@ -89,12 +89,12 @@ export default function UploadPage() {
             setSeeds(parsed)
           } catch (e2) {
             console.error('[upload] JSON parse failed after cleanup:', (e2 as Error).message, jsonStr.slice(0, 300))
-            throw new Error('Format de reponse invalide. Reessayez.')
+            throw new Error('Format de réponse invalide. Réessayez.')
           }
         }
       } else {
         console.error('[upload] No JSON array found in:', result.slice(0, 300))
-        throw new Error('Analyse impossible. Reessayez.')
+        throw new Error('Analyse impossible. Réessayez.')
       }
 
       setPhase('seeds')
@@ -109,7 +109,7 @@ export default function UploadPage() {
 
   async function handlePaste() {
     if (!pastedText.trim()) return
-    await analyzeText(pastedText, 'Texte colle')
+    await analyzeText(pastedText, 'Texte collé')
   }
 
   async function handleFile(file: File) {
@@ -156,14 +156,14 @@ export default function UploadPage() {
       <div className="relative z-10 max-w-2xl mx-auto px-6 py-16">
         {/* Header */}
         <button onClick={() => router.push('/trame')} className="text-[#9C8E80] text-sm mb-10 hover:text-[#FAF8F4] transition-colors">
-          ← Retour a la trame
+          ← Retour à la trame
         </button>
 
         <h1 className="font-display text-4xl font-bold italic mb-3">
           Importez vos notes
         </h1>
         <p className="text-[#9C8E80] text-lg mb-10">
-          Textes deja ecrits, brouillons, journaux... Je vais y trouver les fils de votre histoire.
+          Textes déjà écrits, brouillons, journaux... Je vais y trouver les fils de votre histoire.
         </p>
 
         {/* Phase: Select */}
@@ -235,7 +235,7 @@ export default function UploadPage() {
           <>
             <div className="flex items-center justify-between mb-6">
               <p className="text-[#9C8E80] text-sm">
-                {seeds.length} graines trouvees · {wordCount} mots analyses
+                {seeds.length} graines trouvées · {wordCount} mots analysés
               </p>
               <button
                 onClick={() => { setPhase('select'); setSeeds([]); setError(null) }}

@@ -233,8 +233,8 @@ export function getSessionMessage(wordCount: number, name: string, lang: 'fr' | 
   }
   if (lang === 'es') {
     if (wordCount < 50) return `Cada palabra cuenta, ${name}. Has empezado.`
-    if (wordCount < 150) return `${wordCount} palabras - una bella página de vida. Vuelve mañana.`
-    if (wordCount < 300) return `${wordCount} palabras. Entraste en el relato, ${name}. Estamos en ello.`
+    if (wordCount < 150) return `${wordCount} palabras - una bella página de vida. Nos vemos mañana.`
+    if (wordCount < 300) return `${wordCount} palabras. Entraste en el relato, ${name}. Vamos juntos.`
     return `${wordCount} palabras. Una verdadera sesión de escritura. Tu futuro lector te lo agradecerá.`
   }
   if (wordCount < 50) return `Chaque mot compte, ${name}. Vous avez commencé.`

@@ -47,7 +47,8 @@ export async function runArchivisteUpdate(
     if (!res.ok) return null
 
     const text = await res.text()
-    return JSON.parse(text) as ArchivisteUpdateResult
+    const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim()
+    return JSON.parse(cleaned) as ArchivisteUpdateResult
   } catch {
     return null
   }
@@ -79,7 +80,8 @@ export async function runArchivisteGaps(
     if (!res.ok) return null
 
     const text = await res.text()
-    return JSON.parse(text) as ArchivisteGapsResult
+    const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim()
+    return JSON.parse(cleaned) as ArchivisteGapsResult
   } catch {
     return null
   }
@@ -146,7 +148,8 @@ export async function runRelecteurReview(
     if (!res.ok) return null
 
     const text = await res.text()
-    return JSON.parse(text)
+    const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim()
+    return JSON.parse(cleaned)
   } catch {
     return null
   }

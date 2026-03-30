@@ -112,7 +112,7 @@ export default function OnboardingPage() {
           userName: prenom,
           lang: store.lang,
           intention: intentions.length > 0 ? intentions.join(', ') : intentionCustom,
-          destinataire,
+          destinataire: destinataires.join(', '),
           chapter: { title: '', theme: '' },
         }),
       })

@@ -311,21 +311,37 @@ export async function POST(req: NextRequest) {
   else if (action === 'archiviste_update') {
     agentId = 'archiviste'
     systemPrompt = [
-      `You are the archivist of a memoir project. Analyze this new passage and extract structured data.`,
-      `Return ONLY a raw JSON object (no markdown, no backticks) with this shape:`,
+      `You are the archivist of a memoir project. Analyze this new passage and extract ALL structured data.`,
+      `Return ONLY a raw JSON object (no markdown, no backticks) with this exact shape:`,
       `{`,
       `  "characters": [{ "name": string, "relation": string, "period": string }],`,
       `  "events": [{ "date": string, "title": string, "description": string }],`,
       `  "contradictions": [{ "type": string, "description": string }]`,
       `}`,
-      `Characters: only people explicitly named or clearly identified. Relation = their relationship to the author.`,
-      `Events: only clearly datable or periodable moments. Date = free text ("1978", "Été 1982", etc.).`,
-      `Contradictions: facts that conflict with the existing book state provided.`,
+      ``,
+      `CHARACTERS — extract every person who appears:`,
+      `- Any person referred to by name (first name, surname, nickname, or title+name)`,
+      `- Any clearly identified person without a name (e.g. "my mother", "my teacher Mr. X")`,
+      `- name: the name or identifier used in the text`,
+      `- relation: their relationship to the narrator (parent, friend, teacher, colleague, etc.)`,
+      `- period: the life period they appear in ("childhood", "1970s", "university years", etc.)`,
+      ``,
+      `EVENTS — extract every datable moment or period:`,
+      `- Any year or approximate year mentioned (1978, "the late 70s", "around 1985")`,
+      `- Any named season or month with year ("summer of 1982", "March 1991")`,
+      `- Any life milestone (birth, marriage, move, graduation, job, death, trip)`,
+      `- Any historical or world event referenced in context`,
+      `- date: exact or approximate date/period as free text ("1978", "Été 1982", "fin des années 70")`,
+      `- title: short label for the event (5 words max)`,
+      `- description: one sentence summarizing what happened`,
+      ``,
+      `CONTRADICTIONS — only flag real conflicts with the existing book state below.`,
       bookStateText ? `Existing book state:\n${bookStateText}` : '',
-      `Language of analysis: ${langLabel}. Output raw JSON only.`,
+      ``,
+      `Output raw JSON only. If nothing found for a category, return an empty array [].`,
     ].filter(Boolean).join('\n')
-    messages = [{ role: 'user', content: `New passage:\n\n${content || ''}` }]
-    maxTokens = 600
+    messages = [{ role: 'user', content: `Passage to analyze:\n\n${content || ''}` }]
+    maxTokens = 800
   }
 
   else if (action === 'archiviste_gaps') {
