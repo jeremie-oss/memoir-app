@@ -6,6 +6,7 @@ import { useMemoirStore, getNextChapter, getCompletedCount } from '@/stores/memo
 import { DAILY_QUOTES_BY_LANG, getChapterDisplay } from '@/lib/mock/trame-data'
 import { T } from '@/lib/i18n'
 import { BookArchitect } from '@/components/BookArchitect'
+import ArchivisteScanner from '@/components/ArchivisteScanner'
 
 type PanelId = 'writing' | 'dashboard' | 'book' | 'resources'
 
@@ -42,6 +43,7 @@ export default function HomePage() {
   const [newEvtTitle, setNewEvtTitle] = useState('')
   const [newEvtDesc, setNewEvtDesc] = useState('')
   const [expandedEvt, setExpandedEvt] = useState<string | null>(null)
+  const [scannerOpen, setScannerOpen] = useState<'characters' | 'timeline' | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -613,6 +615,41 @@ export default function HomePage() {
         {/* ── Characters tab ── */}
         {active.id === 'characters' ? (
           <div className="space-y-4">
+            {/* Archiviste scan button — Plume & Gutenberg only */}
+            {(store.plan === 'plume' || store.plan === 'gutenberg') ? (
+              store.sessions.length > 0 ? (
+                <button
+                  onClick={() => setScannerOpen('characters')}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-[#1C1C2E] text-white rounded-2xl hover:bg-[#2e2e45] transition-all group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-[#C4622A] text-sm">✦</span>
+                    <span className="text-sm">
+                      {lang === 'fr' ? 'Analyser mes textes' : 'Analyze my texts'}
+                    </span>
+                    {store.plan === 'gutenberg' && (
+                      <span className="text-[9px] uppercase tracking-widest bg-white/10 px-2 py-0.5 rounded-full">
+                        Gutenberg
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[#9C8E80] text-xs group-hover:text-white transition-colors">
+                    {store.sessions.length} {lang === 'fr' ? 'séances' : 'sessions'}
+                  </span>
+                </button>
+              ) : (
+                <p className="text-xs text-[#9C8E80] italic text-center py-2">
+                  {lang === 'fr' ? 'Quelques séances sont requises pour activer cette fonction.' : 'Write a few sessions to enable analysis.'}
+                </p>
+              )
+            ) : (
+              <div className="flex items-center gap-2 px-4 py-3 bg-[#F5EFE0] rounded-2xl border border-[#EDE4D8]">
+                <span className="text-[#9C8E80] text-sm">🔒</span>
+                <p className="text-xs text-[#9C8E80]">
+                  {lang === 'fr' ? 'Analyse automatique disponible à partir de Plume.' : 'Auto-analysis available from Plume.'}
+                </p>
+              </div>
+            )}
             {/* View toggle */}
             {store.characters.length > 0 && (
               <div className="flex gap-2 mb-2">
@@ -831,7 +868,37 @@ export default function HomePage() {
         ) : active.id === 'timeline' ? (
 
           /* ── Timeline tab ── */
-          <div className="space-y-0">
+          <div className="space-y-4">
+            {/* Archiviste scan button — Plume & Gutenberg only */}
+            {(store.plan === 'plume' || store.plan === 'gutenberg') ? (
+              store.sessions.length > 0 ? (
+                <button
+                  onClick={() => setScannerOpen('timeline')}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-[#1C1C2E] text-white rounded-2xl hover:bg-[#2e2e45] transition-all group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-[#C4622A] text-sm">✦</span>
+                    <span className="text-sm">
+                      {lang === 'fr' ? 'Analyser mes textes' : 'Analyze my texts'}
+                    </span>
+                  </div>
+                  <span className="text-[#9C8E80] text-xs group-hover:text-white transition-colors">
+                    {store.sessions.length} {lang === 'fr' ? 'séances' : 'sessions'}
+                  </span>
+                </button>
+              ) : (
+                <p className="text-xs text-[#9C8E80] italic text-center py-2">
+                  {lang === 'fr' ? 'Quelques séances sont requises pour activer cette fonction.' : 'Write a few sessions to enable analysis.'}
+                </p>
+              )
+            ) : (
+              <div className="flex items-center gap-2 px-4 py-3 bg-[#F5EFE0] rounded-2xl border border-[#EDE4D8]">
+                <span className="text-[#9C8E80] text-sm">🔒</span>
+                <p className="text-xs text-[#9C8E80]">
+                  {lang === 'fr' ? 'Analyse automatique disponible à partir de Plume.' : 'Auto-analysis available from Plume.'}
+                </p>
+              </div>
+            )}
             {/* Sorted events */}
             {store.timelineEvents.length === 0 && !addingEvent && (
               <div className="bg-white rounded-2xl border border-[#EDE4D8] p-8 text-center mb-4">
@@ -1426,6 +1493,24 @@ export default function HomePage() {
 
       {/* BookArchitect modal */}
       {showArchitect && <BookArchitect onClose={() => setShowArchitect(false)} />}
+
+      {/* ArchivisteScanner — personnages */}
+      {scannerOpen === 'characters' && (
+        <ArchivisteScanner
+          type="characters"
+          plan={store.plan}
+          onClose={() => setScannerOpen(null)}
+        />
+      )}
+
+      {/* ArchivisteScanner — chronologie */}
+      {scannerOpen === 'timeline' && (
+        <ArchivisteScanner
+          type="timeline"
+          plan={store.plan}
+          onClose={() => setScannerOpen(null)}
+        />
+      )}
     </div>
   )
 }

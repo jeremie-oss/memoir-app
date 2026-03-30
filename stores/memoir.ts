@@ -11,12 +11,15 @@ export type WritingSession = {
   notes?: string // revision notes / comments on the draft
 }
 
+export type Plan = 'crayon' | 'stilo' | 'plume' | 'gutenberg'
+
 export type Character = {
   id: string
   name: string
   relation: string // e.g. 'parent', 'ami', 'amour', 'mentor', 'enfant', 'frère/sœur', etc.
   period?: string  // free text: "Actuel", "1975-1985", "Amour de jeunesse", "Décédé 2010"
   notes: string
+  description?: string // portrait 2-3 phrases généré par l'Archiviste (Gutenberg only)
 }
 
 export type ResearchNote = {
@@ -104,6 +107,9 @@ export type MemoirState = {
   // RDV Memoir
   nextRdv: string | null  // ISO datetime
 
+  // Offre
+  plan: Plan
+
   // Personnages
   characters: Character[]
 
@@ -154,12 +160,15 @@ export type MemoirState = {
   addCharacter: (c: Omit<Character, 'id'>) => void
   updateCharacter: (id: string, updates: Partial<Omit<Character, 'id'>>) => void
   removeCharacter: (id: string) => void
+  mergeCharacters: (keepId: string, removeId: string, canonicalName: string) => void
+  bulkAddCharacters: (chars: Omit<Character, 'id'>[]) => void
   addResearchNote: (n: Omit<ResearchNote, 'id'>) => void
   updateResearchNote: (id: string, updates: Partial<Omit<ResearchNote, 'id'>>) => void
   removeResearchNote: (id: string) => void
   addTimelineEvent: (e: Omit<TimelineEvent, 'id'>) => void
   updateTimelineEvent: (id: string, updates: Partial<Omit<TimelineEvent, 'id'>>) => void
   removeTimelineEvent: (id: string) => void
+  bulkAddTimelineEvents: (events: Omit<TimelineEvent, 'id'>[]) => void
   toggleSavedQuote: (text: string) => void
   setBookFoundations: (f: NonNullable<MemoirState['bookFoundations']>) => void
   setBornYear: (year: number | null) => void
@@ -211,6 +220,7 @@ const initialState = {
     nudgeEnabled: true,
   },
   nextRdv: null as string | null,
+  plan: 'plume' as Plan,
   characters: [] as Character[],
   timelineEvents: [] as TimelineEvent[],
   researchNotes: [] as ResearchNote[],
@@ -221,6 +231,17 @@ const initialState = {
   bookFoundations: null as MemoirState['bookFoundations'],
   foundationsComplete: false,
   bornYear: null as number | null,
+}
+
+// Normalisation pour déduplication
+function normalizeName(name: string): string {
+  return name.toLowerCase().trim()
+    .replace(/^(mon |ma |mes |le |la |les |l'|un |une )/i, '')
+    .replace(/\s+/g, ' ')
+}
+
+function normalizeEventKey(date: string, title: string): string {
+  return `${date.toLowerCase().trim()}|${title.toLowerCase().trim()}`
 }
 
 export const useMemoirStore = create<MemoirState>()(
@@ -331,6 +352,38 @@ export const useMemoirStore = create<MemoirState>()(
       removeCharacter: (id) =>
         set((s) => ({ characters: s.characters.filter((ch) => ch.id !== id) })),
 
+      mergeCharacters: (keepId, removeId, canonicalName) =>
+        set((s) => {
+          const keep = s.characters.find((ch) => ch.id === keepId)
+          const remove = s.characters.find((ch) => ch.id === removeId)
+          if (!keep || !remove) return {}
+          const merged: Character = {
+            ...keep,
+            name: canonicalName,
+            period: keep.period || remove.period,
+            notes: [keep.notes, remove.notes].filter(Boolean).join(' — ') || '',
+            description: keep.description || remove.description,
+          }
+          return {
+            characters: s.characters
+              .filter((ch) => ch.id !== removeId)
+              .map((ch) => ch.id === keepId ? merged : ch),
+          }
+        }),
+
+      bulkAddCharacters: (chars) =>
+        set((s) => {
+          const existing = s.characters.map((ch) => normalizeName(ch.name))
+          const toAdd = chars.filter((c) => !existing.includes(normalizeName(c.name)))
+          if (!toAdd.length) return {}
+          return {
+            characters: [
+              ...s.characters,
+              ...toAdd.map((c) => ({ ...c, id: `char-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, notes: c.notes ?? '' })),
+            ],
+          }
+        }),
+
       addResearchNote: (n) =>
         set((s) => ({
           researchNotes: [...s.researchNotes, { ...n, id: `note-${Date.now()}` }],
@@ -356,6 +409,19 @@ export const useMemoirStore = create<MemoirState>()(
 
       removeTimelineEvent: (id) =>
         set((s) => ({ timelineEvents: s.timelineEvents.filter((ev) => ev.id !== id) })),
+
+      bulkAddTimelineEvents: (events) =>
+        set((s) => {
+          const existing = s.timelineEvents.map((ev) => normalizeEventKey(ev.date, ev.title))
+          const toAdd = events.filter((e) => !existing.includes(normalizeEventKey(e.date, e.title)))
+          if (!toAdd.length) return {}
+          return {
+            timelineEvents: [
+              ...s.timelineEvents,
+              ...toAdd.map((e) => ({ ...e, id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}` })),
+            ],
+          }
+        }),
 
       toggleSavedQuote: (text) =>
         set((s) => ({

@@ -1,9 +1,49 @@
 // Memoir — Client Archiviste
 // Fonctions appelées côté client après chaque sauvegarde de session.
 // Toutes les opérations sont fire-and-forget (non bloquantes pour l'UX).
+// Les fonctions runScan* sont awaitables (déclenchées manuellement depuis les Ressources).
 
 import { buildBookState, serializeBookState, getRecentPassages } from './book-state'
-import type { MemoirState } from '@/stores/memoir'
+import type { MemoirState, Plan } from '@/stores/memoir'
+
+// ─────────────────────────────────────────────
+// Types Scan (résultats awaitables)
+// ─────────────────────────────────────────────
+
+export type CharacterProposal = {
+  name: string
+  relation: string
+  period?: string
+  description?: string   // Gutenberg only
+  confidence: 'high' | 'low'
+}
+
+export type TimelineProposal = {
+  date: string
+  title: string
+  description: string
+  confidence: 'high' | 'low'
+}
+
+export type DuplicateWarning = {
+  proposedName: string
+  existingId: string
+  existingName: string
+  reason: string
+}
+
+export type ScanResult<T> = {
+  proposed: T[]
+  possibleDuplicates: DuplicateWarning[]
+}
+
+// Parser JSON robuste — évite les échecs silencieux de la regex
+function extractJson(text: string): unknown {
+  const start = text.indexOf('{')
+  const end = text.lastIndexOf('}')
+  if (start === -1 || end === -1 || end <= start) throw new Error('No JSON object found in response')
+  return JSON.parse(text.slice(start, end + 1))
+}
 
 type ArchivisteUpdateResult = {
   characters: { name: string; relation: string; period: string }[]
@@ -154,6 +194,111 @@ export async function runRelecteurReview(
     const jsonMatch = text.match(/\{[\s\S]*\}/)
     if (!jsonMatch) return null
     return JSON.parse(jsonMatch[0])
+  } catch {
+    return null
+  }
+}
+
+// ─────────────────────────────────────────────
+// Scan manuel déclenché depuis les Ressources
+// Ces fonctions sont awaitables (pas fire-and-forget)
+// ─────────────────────────────────────────────
+
+// Analyse tous les textes et propose les personnages nouveaux + doublons probables
+export async function runScanCharacters(
+  store: Pick<MemoirState, 'userName' | 'lang' | 'sessions' | 'characters' | 'bookFoundations' | 'bornYear'>,
+  plan: Plan
+): Promise<ScanResult<CharacterProposal> | null> {
+  try {
+    if (!store.sessions.length) return null
+
+    // Excerpts de toutes les séances (300 chars chacun)
+    const excerpts = store.sessions
+      .map((s) => s.content.slice(0, 300))
+      .join('\n---\n')
+
+    // 3 derniers passages complets
+    const lastPassages = store.sessions
+      .slice(-3)
+      .map((s) => s.content)
+      .join('\n\n---\n\n')
+
+    // Liste existante compacte pour déduplication côté IA
+    const existingChars = store.characters.map((c) => ({
+      id: c.id,
+      name: c.name,
+      relation: c.relation,
+    }))
+
+    const res = await fetch('/api/memoir', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'archiviste_scan_characters',
+        userName: store.userName,
+        lang: store.lang,
+        plan,
+        excerpts,
+        lastPassages,
+        existingChars,
+        bookFoundations: store.bookFoundations,
+        bornYear: store.bornYear,
+      }),
+    })
+
+    if (!res.ok) return null
+
+    const text = await res.text()
+    const data = extractJson(text) as ScanResult<CharacterProposal>
+    if (!data.proposed || !Array.isArray(data.proposed)) return null
+    return data
+  } catch {
+    return null
+  }
+}
+
+// Analyse tous les textes et propose les événements chronologiques nouveaux
+export async function runScanTimeline(
+  store: Pick<MemoirState, 'userName' | 'lang' | 'sessions' | 'timelineEvents' | 'bornYear'>
+): Promise<ScanResult<TimelineProposal> | null> {
+  try {
+    if (!store.sessions.length) return null
+
+    const excerpts = store.sessions
+      .map((s) => s.content.slice(0, 300))
+      .join('\n---\n')
+
+    const lastPassages = store.sessions
+      .slice(-3)
+      .map((s) => s.content)
+      .join('\n\n---\n\n')
+
+    const existingEvents = store.timelineEvents.map((e) => ({
+      id: e.id,
+      date: e.date,
+      title: e.title,
+    }))
+
+    const res = await fetch('/api/memoir', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'archiviste_scan_timeline',
+        userName: store.userName,
+        lang: store.lang,
+        excerpts,
+        lastPassages,
+        existingEvents,
+        bornYear: store.bornYear,
+      }),
+    })
+
+    if (!res.ok) return null
+
+    const text = await res.text()
+    const data = extractJson(text) as ScanResult<TimelineProposal>
+    if (!data.proposed || !Array.isArray(data.proposed)) return null
+    return data
   } catch {
     return null
   }

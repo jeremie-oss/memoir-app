@@ -31,10 +31,10 @@ export async function POST(req: NextRequest) {
   }
   const body = await req.json()
   const { action, chapter, userName, lang, content, conversation, intention, destinataire, sessions, profile, memories } = body as {
-    action: 'guide_question' | 'guide_generate' | 'dicte_reformulate' | 'libre_inspire' | 'onboarding_style' | 'entretien_question' | 'entretien_close' | 'upload_analyze' | 'brainstorm_question' | 'brainstorm_generate' | 'archiviste_update' | 'archiviste_gaps' | 'archiviste_style' | 'relecteur_review' | 'architecte_review'
+    action: 'guide_question' | 'guide_generate' | 'dicte_reformulate' | 'libre_inspire' | 'onboarding_style' | 'entretien_question' | 'entretien_close' | 'upload_analyze' | 'brainstorm_question' | 'brainstorm_generate' | 'archiviste_update' | 'archiviste_gaps' | 'archiviste_style' | 'archiviste_scan_characters' | 'archiviste_scan_timeline' | 'relecteur_review' | 'architecte_review'
     chapter?: { title: string; theme: string; prompt?: string }
     userName: string
-    lang: 'fr' | 'en' | 'es'
+    lang: 'fr' | 'en' | 'es' | 'tr'
     content?: string
     conversation?: ConvoMsg[]
     intention?: string
@@ -54,6 +54,13 @@ export async function POST(req: NextRequest) {
     allSessions?: string
   }
   const { bornYear, chapterNumber } = body as { bornYear?: number | null; chapterNumber?: number }
+  const { excerpts: scanExcerpts, lastPassages: scanLastPassages, existingChars, existingEvents, plan: userPlan } = body as {
+    excerpts?: string
+    lastPassages?: string
+    existingChars?: { id: string; name: string; relation: string }[]
+    existingEvents?: { id: string; date: string; title: string }[]
+    plan?: string
+  }
   const { bookFoundations } = body as {
     bookFoundations?: { period: string; keyPeople: string; theme: string; ambition: string } | null
   }
@@ -472,6 +479,85 @@ export async function POST(req: NextRequest) {
     maxTokens = 900
   }
 
+  // ── ARCHIVISTE SCAN PERSONNAGES ───────────────────────────────────────────────
+
+  else if (action === 'archiviste_scan_characters') {
+    agentId = 'archiviste'
+    const isGutenberg = userPlan === 'gutenberg'
+    const existingList = (existingChars || []).map((c) => `- ${c.name} (${c.relation}) [id:${c.id}]`).join('\n') || 'Aucun'
+    const descriptionInstruction = isGutenberg
+      ? `For each proposed character, also include "description": a 2-sentence portrait based STRICTLY on what the texts reveal (not invented). Write in ${langLabel}.`
+      : `Do NOT include a "description" field.`
+    systemPrompt = [
+      `You are a memoir archivist. Your task: identify real human beings mentioned in memoir texts.`,
+      `CRITICAL RULES:`,
+      `- Respond ONLY with a valid JSON object. No explanation. No markdown. No text before or after the JSON.`,
+      `- Only identify REAL HUMAN BEINGS: named people or people with a clear familial/social role (e.g. "ma mère", "mon ami Paul", "le directeur").`,
+      `- NEVER include places, metaphors, abstract concepts, animals, or the narrator themselves.`,
+      `- For proposed characters: use the most complete name form found in the text as the canonical name.`,
+      `- If a found person might be the SAME as an existing catalogued character (same role, similar name, same relationship), put them in "possibleDuplicates" instead of "proposed".`,
+      `- Confidence "high" = person clearly named or has explicit role. "low" = inferred or ambiguous.`,
+      descriptionInstruction,
+      `Language for all text fields: ${langLabel}.`,
+      ``,
+      `Respond with this exact JSON structure:`,
+      `{"proposed":[{"name":"...","relation":"...","period":"...","confidence":"high","description":"..."}],"possibleDuplicates":[{"proposedName":"...","existingId":"...","existingName":"...","reason":"..."}]}`,
+      `If no new characters found: {"proposed":[],"possibleDuplicates":[]}`,
+    ].join('\n')
+    messages = [{
+      role: 'user',
+      content: [
+        `ALREADY CATALOGUED CHARACTERS (do NOT re-propose these):`,
+        existingList,
+        ``,
+        `MEMOIR TEXT EXCERPTS (all sessions):`,
+        scanExcerpts || '',
+        ``,
+        `RECENT FULL PASSAGES:`,
+        scanLastPassages || '',
+      ].join('\n'),
+    }]
+    maxTokens = 1200
+  }
+
+  // ── ARCHIVISTE SCAN CHRONOLOGIE ───────────────────────────────────────────────
+
+  else if (action === 'archiviste_scan_timeline') {
+    agentId = 'archiviste'
+    const existingList = (existingEvents || []).map((e) => `- ${e.date}: ${e.title} [id:${e.id}]`).join('\n') || 'Aucun'
+    const bornCtx = bornYear ? `The author was born in ${bornYear}. Use this to infer approximate years from age references (e.g. "quand j'avais 10 ans" → ${(bornYear ?? 0) + 10}).` : ''
+    systemPrompt = [
+      `You are a memoir archivist. Your task: identify datable life events from memoir texts.`,
+      `CRITICAL RULES:`,
+      `- Respond ONLY with a valid JSON object. No explanation. No markdown. No text before or after the JSON.`,
+      `- Only include events with a minimum temporal anchor: a year, decade, or an age that can be converted to a year.`,
+      `- SKIP vague references with no temporal information ("quand j'étais jeune", "jadis", "autrefois").`,
+      `- If a found event is likely the SAME as an existing one (same period + similar description), put it in "possibleDuplicates".`,
+      `- Dates: use the most precise form the text allows: "1975", "Été 1975", "Années 70", "Mars 1982".`,
+      `- Confidence "high" = year explicit. "low" = year inferred from age or context.`,
+      bornCtx,
+      `Language for all text fields: ${langLabel}.`,
+      ``,
+      `Respond with this exact JSON structure:`,
+      `{"proposed":[{"date":"...","title":"...","description":"...","confidence":"high"}],"possibleDuplicates":[{"proposedName":"...","existingId":"...","existingName":"...","reason":"..."}]}`,
+      `If no new events found: {"proposed":[],"possibleDuplicates":[]}`,
+    ].filter(Boolean).join('\n')
+    messages = [{
+      role: 'user',
+      content: [
+        `ALREADY CATALOGUED EVENTS (do NOT re-propose these):`,
+        existingList,
+        ``,
+        `MEMOIR TEXT EXCERPTS (all sessions):`,
+        scanExcerpts || '',
+        ``,
+        `RECENT FULL PASSAGES:`,
+        scanLastPassages || '',
+      ].join('\n'),
+    }]
+    maxTokens = 1000
+  }
+
   else {
     return new Response('Unknown action', { status: 400 })
   }
@@ -482,7 +568,7 @@ export async function POST(req: NextRequest) {
   }
 
   // JSON agents don't stream — they need a complete, parseable response
-  const isJsonAgent = ['archiviste_update', 'archiviste_gaps', 'relecteur_review', 'architecte_review'].includes(action)
+  const isJsonAgent = ['archiviste_update', 'archiviste_gaps', 'archiviste_scan_characters', 'archiviste_scan_timeline', 'relecteur_review', 'architecte_review'].includes(action)
 
   try {
     const response = await fetch(OPENROUTER_URL, {
