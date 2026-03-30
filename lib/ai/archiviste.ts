@@ -23,7 +23,7 @@ type ArchivisteGapsResult = {
 export async function runArchivisteUpdate(
   store: Pick<MemoirState,
     'userName' | 'lang' | 'profile' | 'chapters' | 'characters' |
-    'timelineEvents' | 'sessions' | 'styleFingerprint' | 'bookGaps'
+    'timelineEvents' | 'sessions' | 'styleFingerprint' | 'bookGaps' | 'bookFoundations'
   >,
   newContent: string,
   lang: 'fr' | 'en' | 'es'
@@ -41,6 +41,7 @@ export async function runArchivisteUpdate(
         lang,
         content: newContent,
         bookStateText,
+        bookFoundations: store.bookFoundations,
       }),
     })
 

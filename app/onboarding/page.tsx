@@ -153,7 +153,7 @@ export default function OnboardingPage() {
       subjectName: role === 'accompagnateur' ? subjectName : '',
     })
     store.completeOnboarding()
-    router.push('/home')
+    router.push('/fondations')
   }
 
   if (!mounted) return null
@@ -287,7 +287,7 @@ export default function OnboardingPage() {
                 store.setUserName(prenom.trim())
               }
               store.completeOnboarding()
-              router.push('/home')
+              router.push('/fondations')
             }}
             className="text-center text-xs text-[#9C8E80] py-2 hover:text-[#7A4F32] transition-colors"
           >

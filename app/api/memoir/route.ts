@@ -29,6 +29,21 @@ export async function POST(req: NextRequest) {
     allSessions?: string
   }
   const { bornYear, chapterNumber } = body as { bornYear?: number | null; chapterNumber?: number }
+  const { bookFoundations } = body as {
+    bookFoundations?: { period: string; keyPeople: string; theme: string; ambition: string } | null
+  }
+
+  function getFoundationsContext(): string {
+    if (!bookFoundations) return ''
+    const parts = [
+      bookFoundations.period && `Period covered: ${bookFoundations.period}`,
+      bookFoundations.keyPeople && `Key people: ${bookFoundations.keyPeople}`,
+      bookFoundations.theme && `Central theme: ${bookFoundations.theme}`,
+      bookFoundations.ambition && `Author's intention: ${bookFoundations.ambition}`,
+    ].filter(Boolean)
+    if (!parts.length) return ''
+    return `BOOK FOUNDATIONS:\n${parts.join('\n')}`
+  }
 
   // Temporal context for anachronism prevention
   function getTemporalContext(): string {
@@ -58,6 +73,7 @@ export async function POST(req: NextRequest) {
         chapter!.prompt ? `Chapter context: ${chapter!.prompt}` : '',
         `Language: ${langLabel}. ONE question only, addressed directly to ${subj}, no preamble.`,
         getTemporalContext(),
+        getFoundationsContext(),
       ].filter(Boolean).join(' ')
     } else {
       systemPrompt = [
@@ -68,6 +84,7 @@ export async function POST(req: NextRequest) {
         `Examples of good questions: "Décrivez l'endroit exact où vous étiez." / "Qui d'autre était présent ?" / "Qu'avez-vous remarqué en premier ?" / "Que s'est-il passé juste après ?"`,
         chapter!.prompt ? `Chapter context: ${chapter!.prompt}` : '',
         getTemporalContext(),
+        getFoundationsContext(),
         `Language: ${langLabel}. ONE question only, direct, no preamble, no "I", just the question itself.`,
       ].filter(Boolean).join(' ')
     }
@@ -337,6 +354,7 @@ export async function POST(req: NextRequest) {
       ``,
       `CONTRADICTIONS — only flag real conflicts with the existing book state below.`,
       bookStateText ? `Existing book state:\n${bookStateText}` : '',
+      getFoundationsContext(),
       ``,
       `Output raw JSON only. If nothing found for a category, return an empty array [].`,
     ].filter(Boolean).join('\n')

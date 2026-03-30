@@ -121,6 +121,15 @@ export type MemoirState = {
   bookGaps: BookGap[]                 // lacunes détectées (chapitres, personnages, chronologie)
   agentSuggestions: AgentSuggestion[] // suggestions Relecteur / Architecte en attente
 
+  // Fondations du livre (co-construites avant la première séance)
+  bookFoundations: {
+    period: string          // ex. "Mon enfance à Lyon, 1960–1980"
+    keyPeople: string       // ex. "Ma mère Suzanne, mon ami Pierre"
+    theme: string           // ex. "La transmission familiale"
+    ambition: string        // ex. "Que mes petits-enfants comprennent d'où ils viennent"
+  } | null
+  foundationsComplete: boolean
+
   // Profil temporel (pour détection anachronismes)
   bornYear: number | null             // année de naissance de l'auteur (ou du sujet en mode accompagnateur)
 
@@ -152,6 +161,7 @@ export type MemoirState = {
   updateTimelineEvent: (id: string, updates: Partial<Omit<TimelineEvent, 'id'>>) => void
   removeTimelineEvent: (id: string) => void
   toggleSavedQuote: (text: string) => void
+  setBookFoundations: (f: NonNullable<MemoirState['bookFoundations']>) => void
   setBornYear: (year: number | null) => void
   // Agent actions
   setStyleFingerprint: (fingerprint: string) => void
@@ -208,6 +218,8 @@ const initialState = {
   styleFingerprint: undefined as string | undefined,
   bookGaps: [] as BookGap[],
   agentSuggestions: [] as AgentSuggestion[],
+  bookFoundations: null as MemoirState['bookFoundations'],
+  foundationsComplete: false,
   bornYear: null as number | null,
 }
 
@@ -351,6 +363,8 @@ export const useMemoirStore = create<MemoirState>()(
             ? s.savedQuotes.filter((q) => q !== text)
             : [...s.savedQuotes, text],
         })),
+
+      setBookFoundations: (f) => set({ bookFoundations: f, foundationsComplete: true }),
 
       setBornYear: (year) => set({ bornYear: year }),
 
