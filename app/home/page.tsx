@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMemoirStore, getNextChapter, getCompletedCount } from '@/stores/memoir'
 import { DAILY_QUOTES_BY_LANG, getChapterDisplay } from '@/lib/mock/trame-data'
@@ -127,15 +127,16 @@ export default function HomePage() {
     es: ["¿Quién era yo realmente en esa época?", "¿Qué hubiera querido decirle a esa persona?", "¿Cuál era mi secreto mejor guardado?", "¿Qué me enseñó esa prueba sobre mí mismo/a?", "¿Qué escena nunca olvidaré?"],
   }
 
-  const RESOURCES = [
+  const RESOURCES = useMemo(() => [
     { id: 'glossary',   title: t.resources.glossary,  icon: '◈', desc: t.resources.glossaryDesc,  items: GLOSSARY_ITEMS[lang3] },
     { id: 'editorial',  title: t.resources.editorial, icon: '◎', desc: t.resources.editorialDesc, items: store.chapters.map((ch) => { const d = getChapterDisplay(ch, lang3); return `${ch.number}. ${d.title} - ${d.subtitle}` }) },
     { id: 'tips',       title: t.resources.tips,      icon: '✦', desc: t.resources.tipsDesc,       items: TIPS_ITEMS[lang3] },
     { id: 'questions',  title: t.resources.questions, icon: '?', desc: t.resources.questionsDesc,  items: QUESTIONS_ITEMS[lang3] },
-    { id: 'characters', title: store.lang === 'fr' ? 'Personnages' : store.lang === 'es' ? 'Personajes' : 'Characters', icon: '◎', desc: store.lang === 'fr' ? 'Les personnes de votre histoire' : store.lang === 'es' ? 'Las personas de tu historia' : 'The people in your story', items: [] },
-    { id: 'timeline', title: store.lang === 'fr' ? 'Chronologie' : store.lang === 'es' ? 'Cronología' : 'Timeline', icon: '◷', desc: store.lang === 'fr' ? 'Les dates et événements de votre vie' : store.lang === 'es' ? 'Las fechas y eventos de tu vida' : 'The dates and events of your life', items: [] },
-    { id: 'notes', title: store.lang === 'fr' ? 'À faire' : store.lang === 'es' ? 'Por hacer' : 'To-do', icon: '✎', desc: store.lang === 'fr' ? 'Recherches, vérifications, questions' : store.lang === 'es' ? 'Investigaciones, verificaciones, preguntas' : 'Research, checks, questions', items: [] },
-  ]
+    { id: 'characters', title: store.lang === 'fr' ? 'Personnages' : store.lang === 'es' ? 'Personajes' : store.lang === 'tr' ? 'Karakterler' : 'Characters', icon: '◎', desc: store.lang === 'fr' ? 'Les personnes de votre histoire' : store.lang === 'es' ? 'Las personas de tu historia' : store.lang === 'tr' ? 'Hikayenizdeki kişiler' : 'The people in your story', items: [] },
+    { id: 'timeline', title: store.lang === 'fr' ? 'Chronologie' : store.lang === 'es' ? 'Cronología' : store.lang === 'tr' ? 'Kronoloji' : 'Timeline', icon: '◷', desc: store.lang === 'fr' ? 'Les dates et événements de votre vie' : store.lang === 'es' ? 'Las fechas y eventos de tu vida' : store.lang === 'tr' ? 'Hayatınızın tarihleri ve olayları' : 'The dates and events of your life', items: [] },
+    { id: 'notes', title: store.lang === 'fr' ? 'À faire' : store.lang === 'es' ? 'Por hacer' : store.lang === 'tr' ? 'Yapılacaklar' : 'To-do', icon: '✎', desc: store.lang === 'fr' ? 'Recherches, vérifications, questions' : store.lang === 'es' ? 'Investigaciones, verificaciones, preguntas' : store.lang === 'tr' ? 'Araştırmalar, kontroller, sorular' : 'Research, checks, questions', items: [] },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [lang3, store.lang, store.chapters, t.resources])
 
   // ── Animation helpers ──────────────────────────────────────
   function fadeSwitch(fn: () => void) {

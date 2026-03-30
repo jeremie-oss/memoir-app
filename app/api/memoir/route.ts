@@ -3,7 +3,28 @@ import { getAgentModel, OPENROUTER_URL } from '@/lib/ai/agent-config'
 
 type ConvoMsg = { role: 'user' | 'assistant'; content: string }
 
+// In-memory rate limiter — beta safeguard (resets on cold start, good enough for early users)
+const rateLimitMap = new Map<string, { count: number; windowStart: number }>()
+const RATE_LIMIT_WINDOW_MS = 60_000 // 1 minute
+const RATE_LIMIT_MAX = 20            // 20 requests/min per IP
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now()
+  const entry = rateLimitMap.get(ip)
+  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
+    rateLimitMap.set(ip, { count: 1, windowStart: now })
+    return false
+  }
+  entry.count += 1
+  return entry.count > RATE_LIMIT_MAX
+}
+
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+  if (isRateLimited(ip)) {
+    return new Response(JSON.stringify({ error: 'Too many requests' }), { status: 429 })
+  }
+
   const contentLength = req.headers.get('content-length')
   if (contentLength && parseInt(contentLength, 10) > 100_000) {
     return new Response(JSON.stringify({ error: 'Payload too large' }), { status: 413 })

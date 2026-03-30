@@ -131,13 +131,52 @@ const CONTENT = {
       cta: 'Empezar a escribir →',
     },
   },
+  tr: {
+    header: 'Kitabınızın temelleri',
+    sub: 'Yazmadan önce hikayenizin temellerini birlikte atalım.',
+    steps: {
+      period: {
+        label: '01 — Dönem',
+        question: 'Hayatınızın hangi dönemini anlatmak istiyorsunuz?',
+        hint: 'ör. 60\'larda Lyon\'daki çocukluğum, Paris\'teki yıllarım, tüm hayatım…',
+        placeholder: 'Dönemi ve yeri anlatın…',
+      },
+      people: {
+        label: '02 — Karakterler',
+        question: 'Bu hikayede önemli olan kişiler kimler?',
+        hint: 'Onları adlandırın — her yazma seansında karşımıza çıkacaklar.',
+        placeholder: 'Annem Suzan, arkadaşım Ahmet, babam…',
+      },
+      theme: {
+        label: '03 — Ana tema',
+        question: 'Kitabınızın merkezi teması nedir?',
+        hint: 'Tüm hikayelerinizi birbirine bağlayan şey. Kesin olmak zorunda değilsiniz.',
+        placeholder: 'Aile, cesaret, kökler, aşk, özgürlük…',
+      },
+      ambition: {
+        label: '04 — Derin niyet',
+        question: 'Bu kitabı okuyanlar size ne götürsün istiyorsunuz?',
+        hint: 'Okuyucunun yanında götürmesini istediğiniz şey.',
+        placeholder: 'Torunlarım nereden geldiklerini bilsinler…',
+      },
+    },
+    next: 'Devam →',
+    back: '← Geri',
+    finish: 'Temelleri koy',
+    skip: 'Şimdilik geç',
+    done: {
+      title: 'Temeller atıldı.',
+      sub: 'Ajanlarınız artık kitabınızı tanıyor. Neye bakacaklarını, neyi saklayacaklarını biliyorlar.',
+      cta: 'Yazmaya başla →',
+    },
+  },
 }
 
 export default function FondationsPage() {
   const router = useRouter()
   const store = useMemoirStore()
   const lang = store.lang
-  const wl = CONTENT[lang as 'fr' | 'en' | 'es'] ?? CONTENT.fr
+  const wl = CONTENT[lang as 'fr' | 'en' | 'es' | 'tr'] ?? CONTENT.fr
   const stepKeys = STEPS
 
   const [stepIdx, setStepIdx] = useState(0)
