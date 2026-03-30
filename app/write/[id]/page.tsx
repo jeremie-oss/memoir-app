@@ -204,9 +204,10 @@ const DURATIONS: Duration[] = [0, 15, 30, 45]
 
 type WriteModeId = 'libre' | 'guide' | 'dicte'
 
-function getModeText(id: WriteModeId, lang: 'fr' | 'en' | 'es') {
+function getModeText(id: WriteModeId, lang: 'fr' | 'en' | 'es' | 'tr') {
   if (lang === 'fr') return WRITING_MODES[id].fr
   if (lang === 'es') return WRITING_MODES[id].es
+  if (lang === 'tr') return WRITING_MODES[id].tr
   return WRITING_MODES[id].en
 }
 
@@ -862,7 +863,7 @@ export default function WritePage() {
             <div className="flex items-center justify-center gap-3 mb-8">
               <p className="text-xs text-[#7A4F32] tracking-widest uppercase">
                 {isAccomp
-                  ? (lang === 'fr' ? `Pour ${subjectName} · ` : lang === 'es' ? `Para ${subjectName} · ` : `For ${subjectName} · `)
+                  ? (lang === 'fr' ? `Pour  · ` : lang === 'es' ? `Para  · ` : lang === 'tr' ? ` için · ` : `For  · `)
                   : ''}
                 {wl.chapter} {chapter.number} · {chapter.title}
               </p>
@@ -877,13 +878,15 @@ export default function WritePage() {
             {isAccomp && (
               <div className="mb-6 mx-auto max-w-sm bg-[#FAF8F4]/5 rounded-2xl px-5 py-3 border border-[#FAF8F4]/10">
                 <p className="text-[10px] text-[#9C8E80]/50 tracking-widest uppercase mb-1">
-                  {lang === 'fr' ? 'Mode accompagnateur' : lang === 'es' ? 'Modo acompañante' : 'Guide mode'}
+                  {lang === 'fr' ? 'Mode accompagnateur' : lang === 'es' ? 'Modo acompañante' : lang === 'tr' ? 'Rehber modu' : 'Guide mode'}
                 </p>
                 <p className="text-xs text-[#FAF8F4]/60 leading-relaxed italic">
                   {lang === 'fr'
                     ? `Posez les questions à ${subjectName}, notez ses réponses, laissez l'IA composer.`
                     : lang === 'es'
                     ? `Haz las preguntas a ${subjectName}, anota sus respuestas, deja que la IA componga.`
+                    : lang === 'tr'
+                    ? `${subjectName}'e soruları sorun, yanıtlarını not edin, YZ'nin oluşturmasına izin verin.`
                     : `Ask ${subjectName} the questions, note their answers, let the AI compose.`}
                 </p>
               </div>
@@ -984,7 +987,7 @@ export default function WritePage() {
                 }`}>
                   {noAI && <span className="w-1.5 h-1.5 rounded-full bg-[#FAF8F4]/60" />}
                 </span>
-                {lang === 'fr' ? 'Mode concentré — sans IA' : lang === 'es' ? 'Modo concentrado — sin IA' : 'Focused mode — no AI'}
+                {lang === 'fr' ? 'Mode concentré — sans IA' : lang === 'es' ? 'Modo concentrado — sin IA' : lang === 'tr' ? 'Odak modu — YZ yok' : 'Focused mode — no AI'}
               </button>
             </div>
 
@@ -1239,7 +1242,7 @@ export default function WritePage() {
               <header className="flex items-center justify-between px-6 py-4 shrink-0">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <button onClick={() => router.push('/home')} className="text-xs text-[#9C8E80] hover:text-[#C4622A] transition-colors shrink-0">
-                    ← {lang === 'fr' ? 'Accueil' : lang === 'es' ? 'Inicio' : 'Home'}
+                    ← {lang === 'fr' ? 'Accueil' : lang === 'es' ? 'Inicio' : lang === 'tr' ? 'Ana Sayfa' : 'Home'}
                   </button>
                   <span className="text-[#C4B9A8] text-[10px]">/</span>
                   <span className="font-display text-sm italic text-[#7A4F32] truncate">{chapter.title}</span>
@@ -1295,6 +1298,8 @@ export default function WritePage() {
                         ? `Composé à partir de vos ${userAnswerCount} réponse${userAnswerCount > 1 ? 's' : ''}`
                         : lang === 'es'
                         ? `Compuesto a partir de sus ${userAnswerCount} respuesta${userAnswerCount > 1 ? 's' : ''}`
+                        : lang === 'tr'
+                        ? `${userAnswerCount} yanıtınızdan oluşturuldu`
                         : `Composed from your ${userAnswerCount} answer${userAnswerCount > 1 ? 's' : ''}`}
                     </span>
                     <span className="text-[#C4B9A8]/50">{showGuideAnnotations ? '↑' : '↓'}</span>
@@ -1316,7 +1321,7 @@ export default function WritePage() {
                 <div className="px-6 pb-4 max-w-2xl mx-auto w-full">
                   <div className="bg-[#1C1C2E]/5 rounded-xl px-4 py-3 border-l-2 border-[#C4622A]/40">
                     <p className="text-[10px] text-[#9C8E80] tracking-widest uppercase mb-1">
-                      {lang === 'fr' ? 'Question de départ' : lang === 'es' ? 'Pregunta inicial' : 'Starting question'}
+                      {lang === 'fr' ? 'Question de départ' : lang === 'es' ? 'Pregunta inicial' : lang === 'tr' ? 'Başlangıç sorusu' : 'Starting question'}
                     </p>
                     <p className="text-sm text-[#7A4F32] italic leading-relaxed">{inspirationQ}</p>
                   </div>
@@ -1372,7 +1377,7 @@ export default function WritePage() {
                     <>
                       {noAI && (
                         <span className="text-[9px] text-[#9C8E80]/50 tracking-wide">
-                          {lang === 'fr' ? '✍ Mode concentré' : lang === 'es' ? '✍ Modo concentrado' : '✍ Focused'}
+                          {lang === 'fr' ? '✍ Mode concentré' : lang === 'es' ? '✍ Modo concentrado' : lang === 'tr' ? '✍ Odak' : '✍ Focused'}
                         </span>
                       )}
                       <button
@@ -1389,7 +1394,7 @@ export default function WritePage() {
                         {isListening
                           ? wl.micStop
                           : isAccomp
-                          ? (lang === 'fr' ? `◎  Dicter les mots de ${subjectName}` : lang === 'es' ? `◎  Dictar las palabras de ${subjectName}` : `◎  Dictate ${subjectName}'s words`)
+                          ? (lang === 'fr' ? `◎  Dicter les mots de ` : lang === 'es' ? `◎  Dictar las palabras de ` : lang === 'tr' ? `◎   için dikte` : `◎  Dictate 's words`)
                           : wl.micStart}
                       </button>
                       {wordCount >= 5 && !noAI && (
@@ -1416,7 +1421,7 @@ export default function WritePage() {
                   )}
                   {mode === 'libre' && noAI && (
                     <span className="text-[9px] text-[#9C8E80]/40 tracking-wide">
-                      {lang === 'fr' ? '✍ Mode concentré' : lang === 'es' ? '✍ Modo concentrado' : '✍ Focused'}
+                      {lang === 'fr' ? '✍ Mode concentré' : lang === 'es' ? '✍ Modo concentrado' : lang === 'tr' ? '✍ Odak' : '✍ Focused'}
                     </span>
                   )}
 
@@ -1548,7 +1553,7 @@ export default function WritePage() {
                       </button>
                     </div>
                     <p className="text-[10px] text-[#C4B9A8] mb-3 tracking-wide">
-                      {lang === 'fr' ? 'Ces notes ne font pas partie du texte - elles vous appartiennent.' : lang === 'es' ? 'Estas notas no forman parte del texto.' : 'These notes are private - not part of your text.'}
+                      {lang === 'fr' ? 'Ces notes ne font pas partie du texte - elles vous appartiennent.' : lang === 'es' ? 'Estas notas no forman parte del texto.' : lang === 'tr' ? 'Bu notlar metninizin parçası değil — size aittir.' : 'These notes are private - not part of your text.'}
                     </p>
                     <textarea
                       autoFocus
@@ -1616,7 +1621,7 @@ export default function WritePage() {
             <div className="flex items-center justify-center gap-1.5 mb-4">
               <span className="w-1.5 h-1.5 rounded-full bg-[#C4622A]/60" />
               <p className="text-xs text-[#9C8E80]">
-                {store.lang === 'fr' ? 'Votre texte est en sécurité' : store.lang === 'es' ? 'Tu texto está a salvo' : 'Your text is safe'}
+                {store.lang === 'fr' ? 'Votre texte est en sécurité' : store.lang === 'es' ? 'Tu texto está a salvo' : store.lang === 'tr' ? 'Metniniz güvende' : 'Your text is safe'}
               </p>
             </div>
 
@@ -1627,7 +1632,7 @@ export default function WritePage() {
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-xs text-[#9C8E80] tracking-wide">{wl.captureTitle}</p>
                     <span className="text-[10px] text-[#C4B9A8] italic">
-                      {store.lang === 'fr' ? '— optionnel' : store.lang === 'es' ? '— opcional' : '— optional'}
+                      {store.lang === 'fr' ? '— optionnel' : store.lang === 'es' ? '— opcional' : store.lang === 'tr' ? '— isteğe bağlı' : '— optional'}
                     </span>
                   </div>
                   <div className="flex gap-2">
@@ -1679,7 +1684,7 @@ export default function WritePage() {
                 <div className="flex items-center justify-center gap-2 mb-6">
                   <span className="w-2 h-2 rounded-full bg-[#C4622A]" />
                   <p className="text-xs text-[#7A4F32]">
-                    {lang === 'fr' ? 'Sauvegardé' : lang === 'es' ? 'Guardado' : 'Saved'}
+                    {lang === 'fr' ? 'Sauvegardé' : lang === 'es' ? 'Guardado' : lang === 'tr' ? 'Kaydedildi' : 'Saved'}
                   </p>
                 </div>
 
@@ -1690,6 +1695,7 @@ export default function WritePage() {
                     <p className="text-[10px] text-[#9C8E80] italic">
                       {lang === 'fr' ? "L'Œil du lecteur analyse votre texte…"
                         : lang === 'es' ? 'El lector analiza tu texto…'
+                        : lang === 'tr' ? 'Okuyucu gözü metninizi inceliyor…'
                         : 'Reader\'s eye is reviewing your text…'}
                     </p>
                   </div>
@@ -1710,6 +1716,11 @@ export default function WritePage() {
                             archivisteEnriched.chars > 0 ? `${archivisteEnriched.chars} personaje${archivisteEnriched.chars > 1 ? 's' : ''}` : '',
                             archivisteEnriched.events > 0 ? `${archivisteEnriched.events} fecha${archivisteEnriched.events > 1 ? 's' : ''}` : '',
                           ].filter(Boolean).join(', ')}`
+                        : lang === 'tr'
+                        ? `Arşivci zenginleştirdi: ${[
+                            archivisteEnriched.chars > 0 ? `${archivisteEnriched.chars} karakter` : '',
+                            archivisteEnriched.events > 0 ? `${archivisteEnriched.events} tarih` : '',
+                          ].filter(Boolean).join(', ')}`
                         : `Archivist enriched: ${[
                             archivisteEnriched.chars > 0 ? `${archivisteEnriched.chars} character${archivisteEnriched.chars > 1 ? 's' : ''}` : '',
                             archivisteEnriched.events > 0 ? `${archivisteEnriched.events} date${archivisteEnriched.events > 1 ? 's' : ''}` : '',
@@ -1723,6 +1734,7 @@ export default function WritePage() {
                     <p className="text-[10px] text-[#9C8E80]/60 italic">
                       {lang === 'fr' ? "L'Archiviste met à jour la trame…"
                         : lang === 'es' ? 'El Archivista actualiza la trama…'
+                        : lang === 'tr' ? 'Arşivci kurguyu güncelliyor…'
                         : 'Archivist updating the timeline…'}
                     </p>
                   </div>

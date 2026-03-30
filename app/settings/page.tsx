@@ -430,7 +430,7 @@ export default function SettingsPage() {
           {store.profile.ton && (
             <div className="px-5 py-4 bg-[#F5EFE0]/50 border-t border-[#EDE4D8]">
               <p className="text-[10px] text-[#9C8E80]/50 tracking-widest uppercase mb-2">
-                {lang === 'fr' ? 'Exemple de style' : lang === 'es' ? 'Ejemplo de estilo' : 'Style example'}
+                {lang === 'fr' ? 'Exemple de style' : lang === 'es' ? 'Ejemplo de estilo' : lang === 'tr' ? 'Stil örneği' : 'Style example'}
               </p>
               <p className="font-display italic text-sm text-[#7A4F32] leading-relaxed">
                 "{STYLE_SAMPLES[lang3][store.profile.ton as 'romance' | 'biographique' | 'documentaire']}"

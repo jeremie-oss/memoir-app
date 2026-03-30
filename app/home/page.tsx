@@ -322,7 +322,7 @@ export default function HomePage() {
             onClick={() => router.push('/trame/brainstorm')}
             className="w-full text-xs py-2 mt-2 rounded-lg bg-[#C4622A]/10 text-[#C4622A] font-medium hover:bg-[#C4622A]/20 transition-all"
           >
-            Esquisser ma trame
+            {store.lang === 'fr' ? 'Esquisser ma trame' : store.lang === 'es' ? 'Esbozar mi trama' : store.lang === 'tr' ? 'Hikayemi taslakla' : 'Outline my story'}
           </button>
         )}
         <div className="flex gap-2 mt-2">
@@ -346,8 +346,12 @@ export default function HomePage() {
         >
           <span className="text-[#C4622A] text-sm flex-shrink-0 mt-0.5">+</span>
           <div>
-            <p className="text-xs font-medium text-[#1C1C2E]">Importer mes notes</p>
-            <p className="text-[10px] text-[#9C8E80] leading-tight">Textes, brouillons, journaux</p>
+            <p className="text-xs font-medium text-[#1C1C2E]">
+              {store.lang === 'fr' ? 'Importer mes notes' : store.lang === 'es' ? 'Importar mis notas' : store.lang === 'tr' ? 'Notlarımı içe aktar' : 'Import my notes'}
+            </p>
+            <p className="text-[10px] text-[#9C8E80] leading-tight">
+              {store.lang === 'fr' ? 'Textes, brouillons, journaux' : store.lang === 'es' ? 'Textos, borradores, diarios' : store.lang === 'tr' ? 'Metinler, taslaklar, günlükler' : 'Texts, drafts, journals'}
+            </p>
           </div>
         </button>
         {RESOURCES.map((r, i) => (
@@ -503,7 +507,7 @@ export default function HomePage() {
               onClick={() => router.push('/trame/brainstorm')}
               className="mt-4 text-sm text-[#9C8E80] hover:text-[#FAF8F4] transition-colors underline underline-offset-2"
             >
-              Esquisser ma trame avec l&apos;IA
+              {store.lang === 'fr' ? "Esquisser ma trame avec l'IA" : store.lang === 'es' ? 'Esbozar mi trama con la IA' : store.lang === 'tr' ? 'YZ ile hikayemi taslakla' : 'Outline my story with AI'}
             </button>
           )}
         </div>

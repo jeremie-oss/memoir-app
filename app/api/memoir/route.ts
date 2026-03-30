@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
     const periodEnd = periodStart + 10
     return `TEMPORAL CONTEXT: The author was born in ${bornYear}. This chapter covers approximately ${periodStart}-${periodEnd}. Only reference technology, culture, and events that actually existed during this period. For example: no smartphones before 2007, no Facebook before 2004, no React/Node.js before 2013, no streaming services before 2010.`
   }
-  const langLabel = lang === 'fr' ? 'French' : lang === 'es' ? 'Spanish' : 'English'
+  const langLabel = lang === 'fr' ? 'French' : lang === 'es' ? 'Spanish' : lang === 'tr' ? 'Turkish' : 'English'
 
   let systemPrompt = ''
   let messages: ConvoMsg[] = []
