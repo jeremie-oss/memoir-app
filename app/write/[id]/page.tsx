@@ -353,14 +353,16 @@ export default function WritePage() {
       }
     } catch {}
 
-    // If no localStorage draft, restore from last saved session (for revision)
+    // If no localStorage draft, restore from last saved session and skip ritual
     if (!restoredFromDraft) {
       const lastSession = [...store.sessions].reverse().find(s => s.chapterId === chapterId)
       if (lastSession?.content?.trim()) {
         setContent(lastSession.content)
         setChapterNotes(lastSession.notes ?? '')
-        setDraftRestored(true)
-        setTimeout(() => setDraftRestored(false), 3000)
+        // Chapter already in progress: go directly to writing, skip ritual
+        setPhase('writing')
+        startTimer()
+        setTimeout(() => textareaRef.current?.focus(), 150)
       }
     }
 
