@@ -481,6 +481,9 @@ export async function POST(req: NextRequest) {
     return new Response('OPENROUTER_API_KEY not configured', { status: 500 })
   }
 
+  // JSON agents don't stream — they need a complete, parseable response
+  const isJsonAgent = ['archiviste_update', 'archiviste_gaps', 'relecteur_review', 'architecte_review'].includes(action)
+
   try {
     const response = await fetch(OPENROUTER_URL, {
       method: 'POST',
@@ -493,7 +496,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         model: getAgentModel(agentId),
         max_tokens: maxTokens,
-        stream: true,
+        stream: !isJsonAgent,
         messages: [
           { role: 'system', content: systemPrompt },
           ...messages,
@@ -515,6 +518,15 @@ export async function POST(req: NextRequest) {
         }
       } catch { /* not JSON */ }
       return new Response(`AI_ERROR: ${err.slice(0, 300)}`, { status: 500 })
+    }
+
+    // For JSON agents: return the complete content directly (no streaming)
+    if (isJsonAgent) {
+      const json = await response.json()
+      const content: string = json.choices?.[0]?.message?.content ?? ''
+      return new Response(content, {
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+      })
     }
 
     // Forward the SSE stream, extracting text deltas

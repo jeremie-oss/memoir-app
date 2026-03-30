@@ -48,8 +48,9 @@ export async function runArchivisteUpdate(
     if (!res.ok) return null
 
     const text = await res.text()
-    const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim()
-    return JSON.parse(cleaned) as ArchivisteUpdateResult
+    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) return null
+    return JSON.parse(jsonMatch[0]) as ArchivisteUpdateResult
   } catch {
     return null
   }
@@ -81,8 +82,9 @@ export async function runArchivisteGaps(
     if (!res.ok) return null
 
     const text = await res.text()
-    const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim()
-    return JSON.parse(cleaned) as ArchivisteGapsResult
+    const jsonMatch = text.match(/\[[\s\S]*\]/)
+    if (!jsonMatch) return null
+    return JSON.parse(jsonMatch[0]) as ArchivisteGapsResult
   } catch {
     return null
   }
@@ -149,8 +151,9 @@ export async function runRelecteurReview(
     if (!res.ok) return null
 
     const text = await res.text()
-    const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim()
-    return JSON.parse(cleaned)
+    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) return null
+    return JSON.parse(jsonMatch[0])
   } catch {
     return null
   }
