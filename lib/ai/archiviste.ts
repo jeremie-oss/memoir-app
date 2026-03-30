@@ -59,7 +59,7 @@ export async function runArchivisteUpdate(
 export async function runArchivisteGaps(
   store: Pick<MemoirState,
     'userName' | 'lang' | 'profile' | 'chapters' | 'characters' |
-    'timelineEvents' | 'sessions' | 'styleFingerprint' | 'bookGaps'
+    'timelineEvents' | 'sessions' | 'styleFingerprint' | 'bookGaps' | 'bookFoundations'
   >,
   lang: 'fr' | 'en' | 'es'
 ): Promise<ArchivisteGapsResult | null> {

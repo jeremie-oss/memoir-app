@@ -238,6 +238,16 @@ export default function FondationsPage() {
       <div className="pointer-events-none fixed inset-0 opacity-[0.03] z-50" style={GRAIN} />
 
       <div className="max-w-md w-full">
+        {/* Back to home (only if user already has sessions) */}
+        {store.sessions.length > 0 && (
+          <button
+            onClick={() => router.push('/home')}
+            className="mb-6 text-[10px] text-[#9C8E80]/50 hover:text-[#9C8E80] transition-colors flex items-center gap-1"
+          >
+            ← {wl.skip}
+          </button>
+        )}
+
         {/* Header */}
         <div className="text-center mb-10">
           <p className="text-[9px] text-[#C4622A]/70 tracking-widest uppercase mb-3">

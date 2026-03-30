@@ -120,6 +120,7 @@ export async function POST(req: NextRequest) {
         `Language: ${langLabel}. Write 180-240 words of prose. No meta-commentary, just the text itself.`,
         `STYLE RULE: never use em dashes (—) or en dashes (–). Use commas, parentheses, or restructure the sentence instead.`,
         getTemporalContext(),
+        getFoundationsContext(),
       ].filter(Boolean).join(' ')
     } else {
       systemPrompt = [
@@ -130,6 +131,7 @@ export async function POST(req: NextRequest) {
         `Language: ${langLabel}. Write 180-240 words of prose. No meta-commentary, just the text itself.`,
         `STYLE RULE: never use em dashes (—) or en dashes (–). Use commas, parentheses, or restructure the sentence instead.`,
         getTemporalContext(),
+        getFoundationsContext(),
       ].filter(Boolean).join(' ')
     }
 
@@ -175,6 +177,7 @@ export async function POST(req: NextRequest) {
       `STYLE RULE: never use em dashes (—) or en dashes (–).`,
       `Language: ${langLabel}. ONLY the opening sentence(s), nothing else, no attribution.`,
       chapter!.prompt ? `Inspiration: ${chapter!.prompt}` : '',
+      getFoundationsContext(),
     ].filter(Boolean).join(' ')
 
     messages = [{ role: 'user', content: 'Give me an opening.' }]
@@ -441,8 +444,9 @@ export async function POST(req: NextRequest) {
       `fil_rouge: is there a consistent central theme running through all passages?`,
       `suggestions: max 3, concrete and actionable. "actionable" = exact next step for the user (1 sentence).`,
       `Be direct. No compliments. Only what genuinely needs attention.`,
+      getFoundationsContext(),
       `Language: ${langLabel}. Output raw JSON only.`,
-    ].join('\n')
+    ].filter(Boolean).join('\n')
     messages = [{ role: 'user', content: `Book state:\n\n${bookStateText || ''}\n\nAll passages:\n\n${allSessionsText || ''}` }]
     maxTokens = 900
   }

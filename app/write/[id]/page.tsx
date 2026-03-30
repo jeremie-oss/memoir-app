@@ -325,7 +325,7 @@ export default function WritePage() {
   const wl = WL[lang3]
   const modes = Object.values(WRITING_MODES)
   const isAccomp = store.profile.role === 'accompagnateur'
-  const subjectName = store.profile.subjectName || (lang === 'fr' ? 'elle' : lang === 'es' ? 'ella' : 'them')
+  const subjectName = store.profile.subjectName || (lang === 'fr' ? 'elle' : lang === 'es' ? 'ella' : lang === 'tr' ? 'o' : 'them')
 
   // Redirect if chapter not found
   useEffect(() => {
@@ -821,7 +821,7 @@ export default function WritePage() {
     }
     setMicError(false)
     const recognition = new SR()
-    recognition.lang = lang === 'fr' ? 'fr-FR' : lang === 'es' ? 'es-ES' : 'en-US'
+    recognition.lang = lang === 'fr' ? 'fr-FR' : lang === 'es' ? 'es-ES' : lang === 'tr' ? 'tr-TR' : 'en-US'
     recognition.continuous = true
     recognition.interimResults = false
     recognition.onresult = (e: any) => {

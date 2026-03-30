@@ -50,6 +50,14 @@ export type BookState = {
   // Empreinte de style
   styleFingerprint?: string
 
+  // Fondations (contexte éditorial global)
+  bookFoundations: {
+    period: string
+    keyPeople: string
+    theme: string
+    ambition: string
+  } | null
+
   // Lacunes
   gaps: BookGap[]
 
@@ -67,7 +75,7 @@ export type BookState = {
 export function buildBookState(store: Pick<
   MemoirState,
   'userName' | 'lang' | 'profile' | 'chapters' | 'characters' |
-  'timelineEvents' | 'sessions' | 'styleFingerprint' | 'bookGaps'
+  'timelineEvents' | 'sessions' | 'styleFingerprint' | 'bookGaps' | 'bookFoundations'
 >): BookState {
   const sessionSummaries = store.sessions.map(s => {
     const chapter = store.chapters.find(ch => ch.id === s.chapterId)
@@ -105,6 +113,7 @@ export function buildBookState(store: Pick<
     styleFingerprint: store.styleFingerprint,
     gaps: store.bookGaps ?? [],
     sessionSummaries,
+    bookFoundations: store.bookFoundations ?? null,
   }
 }
 
@@ -130,9 +139,20 @@ export function serializeBookState(bs: BookState): string {
     `- ${g.description}`
   ).join('\n') || 'Aucune lacune critique.'
 
+  const foundationsBlock = bs.bookFoundations && (
+    bs.bookFoundations.period || bs.bookFoundations.theme || bs.bookFoundations.ambition
+  ) ? [
+    `FONDATIONS DU LIVRE :`,
+    bs.bookFoundations.period   && `- Période : ${bs.bookFoundations.period}`,
+    bs.bookFoundations.keyPeople && `- Personnages clés : ${bs.bookFoundations.keyPeople}`,
+    bs.bookFoundations.theme    && `- Thème central : ${bs.bookFoundations.theme}`,
+    bs.bookFoundations.ambition && `- Intention : ${bs.bookFoundations.ambition}`,
+  ].filter(Boolean).join('\n') : ''
+
   return [
     `AUTEUR : ${bs.userName} | Langue : ${bs.lang}`,
     `Intention : ${bs.intention} | Pour : ${bs.destinataire} | Ton : ${bs.ton}`,
+    foundationsBlock,
     bs.styleFingerprint ? `\nSTYLE DE L'AUTEUR :\n${bs.styleFingerprint}` : '',
     `\nCHAPITRES :\n${chapterProgress}`,
     `\nPERSONNAGES :\n${characterList}`,
