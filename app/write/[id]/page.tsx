@@ -854,7 +854,7 @@ export default function WritePage() {
 
       {/* ─── PHASE 1 : RITUEL ────────────────────────────────── */}
       {phase === 'ritual' && (
-        <main className="min-h-screen bg-[#1C1C2E] flex flex-col items-center justify-center px-6 relative overflow-hidden">
+        <main className="min-h-screen bg-[#1C1C2E] flex flex-col items-center justify-center px-6 py-12 relative overflow-y-auto">
           <div className="pointer-events-none fixed inset-0 opacity-[0.04] z-50" style={GRAIN} />
           <div className="absolute w-80 h-80 rounded-full bg-[#C4622A] opacity-[0.04] blur-3xl top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
 

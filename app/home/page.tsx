@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMemoirStore, getNextChapter, getCompletedCount } from '@/stores/memoir'
 import { DAILY_QUOTES_BY_LANG, getChapterDisplay } from '@/lib/mock/trame-data'
@@ -28,6 +28,21 @@ export default function HomePage() {
   const [activeResource, setActiveResource] = useState(0)
   const [showArchitect, setShowArchitect] = useState(false)
 
+  // ExpandedResources state (lifted to avoid hooks-in-nested-function error)
+  const [addingChar, setAddingChar] = useState(false)
+  const [newCharName, setNewCharName] = useState('')
+  const [newCharRelation, setNewCharRelation] = useState('')
+  const [newCharPeriod, setNewCharPeriod] = useState('')
+  const [expandedChar, setExpandedChar] = useState<string | null>(null)
+  const [charView, setCharView] = useState<'list' | 'tree'>('list')
+  const [newNoteText, setNewNoteText] = useState('')
+  const [newNoteType, setNewNoteType] = useState<'research' | 'verify' | 'ask' | 'idea'>('research')
+  const [addingEvent, setAddingEvent] = useState(false)
+  const [newEvtDate, setNewEvtDate] = useState('')
+  const [newEvtTitle, setNewEvtTitle] = useState('')
+  const [newEvtDesc, setNewEvtDesc] = useState('')
+  const [expandedEvt, setExpandedEvt] = useState<string | null>(null)
+
   useEffect(() => {
     setMounted(true)
     if (typeof window !== 'undefined') {
@@ -47,11 +62,12 @@ export default function HomePage() {
   }, [mounted, store.onboardingComplete, router])
 
   // Redirect to fondations if onboarding done but fondations not yet visited
+  // Skip for existing users who already have sessions (migration: fondationsComplete didn't exist before)
   useEffect(() => {
-    if (mounted && store.onboardingComplete && !store.foundationsComplete) {
+    if (mounted && store.onboardingComplete && !store.foundationsComplete && store.sessions.length === 0) {
       router.push('/fondations')
     }
-  }, [mounted, store.onboardingComplete, store.foundationsComplete, router])
+  }, [mounted, store.onboardingComplete, store.foundationsComplete, store.sessions.length, router])
 
   if (!mounted) return null
 
@@ -91,15 +107,19 @@ export default function HomePage() {
   const rdvDesc = store.nextRdv
     ? (store.lang === 'fr'
         ? `Prochain entretien : ${new Date(store.nextRdv).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}`
-        : `Next session: ${new Date(store.nextRdv).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`)
+        : store.lang === 'tr'
+          ? `Sonraki görüşme: ${new Date(store.nextRdv).toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' })}`
+          : `Next session: ${new Date(store.nextRdv).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`)
     : (store.lang === 'fr'
         ? 'Planifiez votre prochain entretien avec Memoir'
         : store.lang === 'es'
           ? 'Programe su próxima sesión con Memoir'
-          : 'Schedule your next Memoir session')
+          : store.lang === 'tr'
+            ? 'Bir sonraki Memoir görüşmenizi planlayın'
+            : 'Schedule your next Memoir session')
   const rdvCta = store.nextRdv
-    ? (store.lang === 'fr' ? 'Voir' : store.lang === 'es' ? 'Ver' : 'View')
-    : (store.lang === 'fr' ? 'Planifier' : store.lang === 'es' ? 'Planificar' : 'Schedule')
+    ? (store.lang === 'fr' ? 'Voir' : store.lang === 'es' ? 'Ver' : store.lang === 'tr' ? 'Gör' : 'View')
+    : (store.lang === 'fr' ? 'Planifier' : store.lang === 'es' ? 'Planificar' : store.lang === 'tr' ? 'Planla' : 'Schedule')
 
   const badges = [
     { icon: '🖊', label: t.dashboard.badges.firstWord,  unlocked: store.sessions.length > 0 },
@@ -127,7 +147,7 @@ export default function HomePage() {
     es: ["¿Quién era yo realmente en esa época?", "¿Qué hubiera querido decirle a esa persona?", "¿Cuál era mi secreto mejor guardado?", "¿Qué me enseñó esa prueba sobre mí mismo/a?", "¿Qué escena nunca olvidaré?"],
   }
 
-  const RESOURCES = useMemo(() => [
+  const RESOURCES = [
     { id: 'glossary',   title: t.resources.glossary,  icon: '◈', desc: t.resources.glossaryDesc,  items: GLOSSARY_ITEMS[lang3] },
     { id: 'editorial',  title: t.resources.editorial, icon: '◎', desc: t.resources.editorialDesc, items: store.chapters.map((ch) => { const d = getChapterDisplay(ch, lang3); return `${ch.number}. ${d.title} - ${d.subtitle}` }) },
     { id: 'tips',       title: t.resources.tips,      icon: '✦', desc: t.resources.tipsDesc,       items: TIPS_ITEMS[lang3] },
@@ -135,8 +155,7 @@ export default function HomePage() {
     { id: 'characters', title: store.lang === 'fr' ? 'Personnages' : store.lang === 'es' ? 'Personajes' : store.lang === 'tr' ? 'Karakterler' : 'Characters', icon: '◎', desc: store.lang === 'fr' ? 'Les personnes de votre histoire' : store.lang === 'es' ? 'Las personas de tu historia' : store.lang === 'tr' ? 'Hikayenizdeki kişiler' : 'The people in your story', items: [] },
     { id: 'timeline', title: store.lang === 'fr' ? 'Chronologie' : store.lang === 'es' ? 'Cronología' : store.lang === 'tr' ? 'Kronoloji' : 'Timeline', icon: '◷', desc: store.lang === 'fr' ? 'Les dates et événements de votre vie' : store.lang === 'es' ? 'Las fechas y eventos de tu vida' : store.lang === 'tr' ? 'Hayatınızın tarihleri ve olayları' : 'The dates and events of your life', items: [] },
     { id: 'notes', title: store.lang === 'fr' ? 'À faire' : store.lang === 'es' ? 'Por hacer' : store.lang === 'tr' ? 'Yapılacaklar' : 'To-do', icon: '✎', desc: store.lang === 'fr' ? 'Recherches, vérifications, questions' : store.lang === 'es' ? 'Investigaciones, verificaciones, preguntas' : store.lang === 'tr' ? 'Araştırmalar, kontroller, sorular' : 'Research, checks, questions', items: [] },
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [lang3, store.lang, store.chapters, t.resources])
+  ]
 
   // ── Animation helpers ──────────────────────────────────────
   function fadeSwitch(fn: () => void) {
@@ -238,7 +257,7 @@ export default function HomePage() {
           </div>
           <div className="text-right">
             <p className="text-xs text-[#9C8E80]">
-              {store.lang === 'fr' ? 'Séances écrites' : store.lang === 'es' ? 'Sesiones escritas' : 'Sessions written'}
+              {store.lang === 'fr' ? 'Séances écrites' : store.lang === 'es' ? 'Sesiones escritas' : store.lang === 'tr' ? 'Yazılı seanslar' : 'Sessions written'}
             </p>
             <p className="font-display text-xl font-light italic text-[#C4622A]">
               {store.sessions.length}
@@ -275,7 +294,7 @@ export default function HomePage() {
             {store.userName || t.book.memoirs}
           </p>
           <p className="text-[#9C8E80] text-[10px] mt-0.5">
-            {new Date().getFullYear()} · {completedCount}/{totalChapters} {store.lang === 'fr' ? 'chapitres' : 'chapters'}
+            {new Date().getFullYear()} · {completedCount}/{totalChapters} {store.lang === 'fr' ? 'chapitres' : store.lang === 'tr' ? 'bölümler' : 'chapters'}
           </p>
         </div>
         <div className="flex-1 space-y-0.5 overflow-hidden">
@@ -406,8 +425,8 @@ export default function HomePage() {
           {[
             { label: t.dashboard.wordsWritten, value: totalWords.toLocaleString('fr-FR') },
             { label: t.dashboard.sessions,     value: store.sessions.length.toString() },
-            { label: store.lang === 'fr' ? 'Séances écrites' : store.lang === 'es' ? 'Sesiones' : 'Sessions', value: store.sessions.length.toString() },
-            { label: store.lang === 'fr' ? 'Chapitres' : 'Chapters', value: `${completedCount}/${totalChapters}` },
+            { label: store.lang === 'fr' ? 'Séances écrites' : store.lang === 'es' ? 'Sesiones' : store.lang === 'tr' ? 'Seanslar' : 'Sessions', value: store.sessions.length.toString() },
+            { label: store.lang === 'fr' ? 'Chapitres' : store.lang === 'tr' ? 'Bölümler' : 'Chapters', value: `${completedCount}/${totalChapters}` },
           ].map(stat => (
             <div key={stat.label} className="bg-white rounded-xl border border-[#EDE4D8] px-4 py-4">
               <p className="text-xs text-[#9C8E80] mb-1">{stat.label}</p>
@@ -554,30 +573,13 @@ export default function HomePage() {
     const writeTarget = nextChapter?.id ?? store.chapters[0]?.id ?? 'ch-1'
     const lang = store.lang
 
-    // Characters state (local for add form)
-    const [addingChar, setAddingChar] = useState(false)
-    const [newCharName, setNewCharName] = useState('')
-    const [newCharRelation, setNewCharRelation] = useState('')
-    const [newCharPeriod, setNewCharPeriod] = useState('')
-    const [expandedChar, setExpandedChar] = useState<string | null>(null)
-    const [charView, setCharView] = useState<'list' | 'tree'>('list')
-
-    // Notes state
-    const [newNoteText, setNewNoteText] = useState('')
-    const [newNoteType, setNewNoteType] = useState<'research' | 'verify' | 'ask' | 'idea'>('research')
-
-    // Timeline state
-    const [addingEvent, setAddingEvent] = useState(false)
-    const [newEvtDate, setNewEvtDate] = useState('')
-    const [newEvtTitle, setNewEvtTitle] = useState('')
-    const [newEvtDesc, setNewEvtDesc] = useState('')
-    const [expandedEvt, setExpandedEvt] = useState<string | null>(null)
-
     const RELATION_OPTS = lang === 'fr'
       ? ['Parent', 'Ami(e)', 'Amour', 'Mentor', 'Enfant', 'Frère/Sœur', 'Collègue', 'Autre']
       : lang === 'es'
         ? ['Padre/Madre', 'Amigo/a', 'Amor', 'Mentor/a', 'Hijo/a', 'Hermano/a', 'Colega', 'Otro']
-        : ['Parent', 'Friend', 'Love', 'Mentor', 'Child', 'Sibling', 'Colleague', 'Other']
+        : lang === 'tr'
+          ? ['Ebeveyn', 'Arkadaş', 'Sevgili', 'Mentor', 'Çocuk', 'Kardeş', 'İş arkadaşı', 'Diğer']
+          : ['Parent', 'Friend', 'Love', 'Mentor', 'Child', 'Sibling', 'Colleague', 'Other']
 
     function addChar(e?: React.KeyboardEvent | React.MouseEvent) {
       e?.preventDefault()
@@ -612,20 +614,20 @@ export default function HomePage() {
               <div className="flex gap-2 mb-2">
                 <button onClick={() => setCharView('list')}
                   className={`text-xs px-3 py-1.5 rounded-full border transition-all ${charView === 'list' ? 'bg-[#1C1C2E] text-white border-[#1C1C2E]' : 'border-[#EDE4D8] text-[#7A4F32] hover:bg-[#F5EFE0]'}`}>
-                  {lang === 'fr' ? '≡ Liste' : lang === 'es' ? '≡ Lista' : '≡ List'}
+                  {lang === 'fr' ? '≡ Liste' : lang === 'es' ? '≡ Lista' : lang === 'tr' ? '≡ Liste' : '≡ List'}
                 </button>
                 <button onClick={() => setCharView('tree')}
                   className={`text-xs px-3 py-1.5 rounded-full border transition-all ${charView === 'tree' ? 'bg-[#1C1C2E] text-white border-[#1C1C2E]' : 'border-[#EDE4D8] text-[#7A4F32] hover:bg-[#F5EFE0]'}`}>
-                  {lang === 'fr' ? '⬡ Arbre' : lang === 'es' ? '⬡ Árbol' : '⬡ Tree'}
+                  {lang === 'fr' ? '⬡ Arbre' : lang === 'es' ? '⬡ Árbol' : lang === 'tr' ? '⬡ Ağaç' : '⬡ Tree'}
                 </button>
               </div>
             )}
 
             {/* Tree view */}
             {charView === 'tree' && store.characters.length > 0 && (() => {
-              const ANCESTORS = lang === 'fr' ? ['Parent', 'Frère/Sœur'] : lang === 'es' ? ['Padre/Madre', 'Hermano/a'] : ['Parent', 'Sibling']
-              const PEERS = lang === 'fr' ? ['Ami(e)', 'Amour', 'Mentor', 'Collègue'] : lang === 'es' ? ['Amigo/a', 'Amor', 'Mentor/a', 'Colega'] : ['Friend', 'Love', 'Mentor', 'Colleague']
-              const DESCENDANTS = lang === 'fr' ? ['Enfant'] : lang === 'es' ? ['Hijo/a'] : ['Child']
+              const ANCESTORS = lang === 'fr' ? ['Parent', 'Frère/Sœur'] : lang === 'es' ? ['Padre/Madre', 'Hermano/a'] : lang === 'tr' ? ['Ebeveyn', 'Kardeş'] : ['Parent', 'Sibling']
+              const PEERS = lang === 'fr' ? ['Ami(e)', 'Amour', 'Mentor', 'Collègue'] : lang === 'es' ? ['Amigo/a', 'Amor', 'Mentor/a', 'Colega'] : lang === 'tr' ? ['Arkadaş', 'Sevgili', 'Mentor', 'İş arkadaşı'] : ['Friend', 'Love', 'Mentor', 'Colleague']
+              const DESCENDANTS = lang === 'fr' ? ['Enfant'] : lang === 'es' ? ['Hijo/a'] : lang === 'tr' ? ['Çocuk'] : ['Child']
               const ancestors = store.characters.filter(c => ANCESTORS.includes(c.relation))
               const peers = store.characters.filter(c => PEERS.includes(c.relation))
               const descendants = store.characters.filter(c => DESCENDANTS.includes(c.relation))
@@ -634,7 +636,7 @@ export default function HomePage() {
               function TreeNode({ ch }: { ch: typeof store.characters[0] }) {
                 return (
                   <button
-                    onClick={() => router.push(`/write/${writeTarget}?inspiration=${encodeURIComponent(lang === 'fr' ? `Parlez-moi de ${ch.name} - comment cette personne est-elle entrée dans votre vie ?` : lang === 'es' ? `Háblame de ${ch.name} - ¿cómo entró esta persona en tu vida?` : `Tell me about ${ch.name} - how did this person enter your life?`)}`)}
+                    onClick={() => router.push(`/write/${writeTarget}?inspiration=${encodeURIComponent(lang === 'fr' ? `Parlez-moi de  - comment cette personne est-elle entrée dans votre vie ?` : lang === 'es' ? `Háblame de  - ¿cómo entró esta persona en tu vida?` : lang === 'tr' ? ` hakkında anlatın - bu kişi hayatınıza nasıl girdi?` : `Tell me about  - how did this person enter your life?`)}`)}
                     className="flex flex-col items-center gap-1 group"
                   >
                     <div className="w-10 h-10 rounded-full bg-[#EDE4D8] group-hover:bg-[#C4622A]/20 flex items-center justify-center transition-all">
@@ -685,7 +687,7 @@ export default function HomePage() {
                       {descendants.map(ch => <TreeNode key={ch.id} ch={ch} />)}
                     </div>
                   )}
-                  <p className="text-[10px] text-[#9C8E80] text-center mt-4">{lang === 'fr' ? 'Cliquez sur un personnage pour écrire à son sujet' : lang === 'es' ? 'Haz clic en un personaje para escribir sobre él' : 'Click a character to write about them'}</p>
+                  <p className="text-[10px] text-[#9C8E80] text-center mt-4">{lang === 'fr' ? 'Cliquez sur un personnage pour écrire à son sujet' : lang === 'es' ? 'Haz clic en un personaje para escribir sobre él' : lang === 'tr' ? 'Bir karakter hakkında yazmak için tıklayın' : 'Click a character to write about them'}</p>
                 </div>
               )
             })()}
@@ -694,10 +696,10 @@ export default function HomePage() {
             {store.characters.length === 0 && !addingChar && (
               <div className="bg-white rounded-2xl border border-[#EDE4D8] p-8 text-center">
                 <p className="text-[#9C8E80] text-sm mb-1">
-                  {lang === 'fr' ? 'Aucun personnage encore.' : lang === 'es' ? 'Ningún personaje todavía.' : 'No characters yet.'}
+                  {lang === 'fr' ? 'Aucun personnage encore.' : lang === 'es' ? 'Ningún personaje todavía.' : lang === 'tr' ? 'Henüz karakter yok.' : 'No characters yet.'}
                 </p>
                 <p className="text-[#C4B9A8] text-xs">
-                  {lang === 'fr' ? 'Ajoutez les personnes importantes de votre récit.' : lang === 'es' ? 'Añade las personas importantes de tu relato.' : 'Add the important people in your story.'}
+                  {lang === 'fr' ? 'Ajoutez les personnes importantes de votre récit.' : lang === 'es' ? 'Añade las personas importantes de tu relato.' : lang === 'tr' ? 'Hikayenizdeki önemli kişileri ekleyin.' : 'Add the important people in your story.'}
                 </p>
               </div>
             )}
@@ -722,10 +724,10 @@ export default function HomePage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => router.push(`/write/${writeTarget}?inspiration=${encodeURIComponent(lang === 'fr' ? `Parlez-moi de ${ch.name} - comment cette personne est-elle entrée dans votre vie ?` : lang === 'es' ? `Háblame de ${ch.name} - ¿cómo entró esta persona en tu vida?` : `Tell me about ${ch.name} - how did this person enter your life?`)}`)}
+                      onClick={() => router.push(`/write/${writeTarget}?inspiration=${encodeURIComponent(lang === 'fr' ? `Parlez-moi de  - comment cette personne est-elle entrée dans votre vie ?` : lang === 'es' ? `Háblame de  - ¿cómo entró esta persona en tu vida?` : lang === 'tr' ? ` hakkında anlatın - bu kişi hayatınıza nasıl girdi?` : `Tell me about  - how did this person enter your life?`)}`)}
                       className="text-xs text-[#C4622A] bg-[#C4622A]/10 hover:bg-[#C4622A]/20 px-3 py-1.5 rounded-xl transition-all"
                     >
-                      {lang === 'fr' ? 'Écrire →' : lang === 'es' ? 'Escribir →' : 'Write →'}
+                      {lang === 'fr' ? 'Écrire →' : lang === 'es' ? 'Escribir →' : lang === 'tr' ? 'Yaz →' : 'Write →'}
                     </button>
                     <button
                       onClick={() => setExpandedChar(expandedChar === ch.id ? null : ch.id)}
@@ -738,22 +740,22 @@ export default function HomePage() {
                 {expandedChar === ch.id && (
                   <div className="px-5 pb-4 border-t border-[#EDE4D8]">
                     <p className="text-[10px] text-[#9C8E80] tracking-widest uppercase mt-3 mb-1">
-                      {lang === 'fr' ? 'Période' : lang === 'es' ? 'Período' : 'Period'}
+                      {lang === 'fr' ? 'Période' : lang === 'es' ? 'Período' : lang === 'tr' ? 'Dönem' : 'Period'}
                     </p>
                     <input
                       type="text"
                       value={ch.period ?? ''}
                       onChange={e => store.updateCharacter(ch.id, { period: e.target.value })}
-                      placeholder={lang === 'fr' ? 'ex : Actuel, 1975-1985, Amour de jeunesse, Décédé 2010…' : lang === 'es' ? 'ej: Actual, 1975-1985, Fallecido 2010…' : 'e.g. Current, 1975-1985, Childhood, Deceased 2010…'}
+                      placeholder={lang === 'fr' ? 'ex : Actuel, 1975-1985, Amour de jeunesse, Décédé 2010…' : lang === 'es' ? 'ej: Actual, 1975-1985, Fallecido 2010…' : lang === 'tr' ? 'ör: Şimdiki, 1975-1985, Gençlik aşkı, Vefat 2010…' : 'e.g. Current, 1975-1985, Childhood, Deceased 2010…'}
                       className="w-full text-sm text-[#1C1C2E] bg-[#FAF8F4] rounded-xl px-3 py-2 outline-none border border-[#EDE4D8] focus:border-[#C4622A]/40 transition-colors mb-3"
                     />
                     <p className="text-[10px] text-[#9C8E80] tracking-widest uppercase mb-1">
-                      {lang === 'fr' ? 'Notes' : lang === 'es' ? 'Notas' : 'Notes'}
+                      {lang === 'fr' ? 'Notes' : lang === 'es' ? 'Notas' : lang === 'tr' ? 'Notlar' : 'Notes'}
                     </p>
                     <textarea
                       value={ch.notes}
                       onChange={e => store.updateCharacter(ch.id, { notes: e.target.value })}
-                      placeholder={lang === 'fr' ? 'Notes sur ce personnage…' : lang === 'es' ? 'Notas sobre este personaje…' : 'Notes about this character…'}
+                      placeholder={lang === 'fr' ? 'Notes sur ce personnage…' : lang === 'es' ? 'Notas sobre este personaje…' : lang === 'tr' ? 'Bu karakter hakkında notlar…' : 'Notes about this character…'}
                       className="w-full text-sm text-[#1C1C2E] bg-[#FAF8F4] rounded-xl p-3 outline-none resize-none border border-[#EDE4D8] focus:border-[#C4622A]/40 transition-colors"
                       rows={3}
                     />
@@ -768,7 +770,7 @@ export default function HomePage() {
                       </div>
                       <button onClick={() => store.removeCharacter(ch.id)}
                         className="text-xs text-red-300 hover:text-red-500 transition-colors ml-2">
-                        {lang === 'fr' ? 'Suppr.' : 'Del.'}
+                        {lang === 'fr' ? 'Suppr.' : lang === 'tr' ? 'Sil' : 'Del.'}
                       </button>
                     </div>
                   </div>
@@ -785,7 +787,7 @@ export default function HomePage() {
                   value={newCharName}
                   onChange={e => setNewCharName(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && addChar(e)}
-                  placeholder={lang === 'fr' ? 'Prénom ou nom…' : lang === 'es' ? 'Nombre…' : 'Name…'}
+                  placeholder={lang === 'fr' ? 'Prénom ou nom…' : lang === 'es' ? 'Nombre…' : lang === 'tr' ? 'Ad veya soyad…' : 'Name…'}
                   className="w-full text-sm text-[#1C1C2E] bg-[#FAF8F4] rounded-xl px-4 py-2.5 outline-none border border-[#EDE4D8] focus:border-[#C4622A]/40 mb-2"
                 />
                 <input
@@ -793,7 +795,7 @@ export default function HomePage() {
                   value={newCharPeriod}
                   onChange={e => setNewCharPeriod(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && addChar(e)}
-                  placeholder={lang === 'fr' ? 'Période (ex : Actuel, 1975-1985, Amour de jeunesse)…' : lang === 'es' ? 'Período (ej: Actual, 1975-1985)…' : 'Period (e.g. Current, 1975–1985, Childhood friend)…'}
+                  placeholder={lang === 'fr' ? 'Période (ex : Actuel, 1975-1985, Amour de jeunesse)…' : lang === 'es' ? 'Período (ej: Actual, 1975-1985)…' : lang === 'tr' ? 'Dönem (ör: Şimdiki, 1975-1985, Çocukluk arkadaşı)…' : 'Period (e.g. Current, 1975–1985, Childhood friend)…'}
                   className="w-full text-sm text-[#1C1C2E] bg-[#FAF8F4] rounded-xl px-4 py-2.5 outline-none border border-[#EDE4D8] focus:border-[#C4622A]/40 mb-3"
                 />
                 <div className="flex gap-2 flex-wrap mb-3">
@@ -807,18 +809,18 @@ export default function HomePage() {
                 <div className="flex gap-2">
                   <button onClick={(e) => addChar(e)}
                     className="flex-1 bg-[#C4622A] text-white text-sm font-medium py-2 rounded-xl hover:opacity-90 transition-all">
-                    {lang === 'fr' ? 'Ajouter' : lang === 'es' ? 'Añadir' : 'Add'}
+                    {lang === 'fr' ? 'Ajouter' : lang === 'es' ? 'Añadir' : lang === 'tr' ? 'Ekle' : 'Add'}
                   </button>
                   <button onClick={() => { setAddingChar(false); setNewCharName(''); setNewCharRelation(''); setNewCharPeriod('') }}
                     className="text-sm text-[#9C8E80] px-4 hover:text-[#1C1C2E] transition-colors">
-                    {lang === 'fr' ? 'Annuler' : lang === 'es' ? 'Cancelar' : 'Cancel'}
+                    {lang === 'fr' ? 'Annuler' : lang === 'es' ? 'Cancelar' : lang === 'tr' ? 'İptal' : 'Cancel'}
                   </button>
                 </div>
               </div>
             ) : (
               <button onClick={() => setAddingChar(true)}
                 className="w-full bg-white border-2 border-dashed border-[#EDE4D8] rounded-2xl py-4 text-sm text-[#9C8E80] hover:border-[#C4622A]/40 hover:text-[#C4622A] transition-all">
-                + {lang === 'fr' ? 'Ajouter un personnage' : lang === 'es' ? 'Añadir un personaje' : 'Add a character'}
+                + {lang === 'fr' ? 'Ajouter un personnage' : lang === 'es' ? 'Añadir un personaje' : lang === 'tr' ? 'Karakter ekle' : 'Add a character'}
               </button>
             )}
           </div>
@@ -830,10 +832,10 @@ export default function HomePage() {
             {store.timelineEvents.length === 0 && !addingEvent && (
               <div className="bg-white rounded-2xl border border-[#EDE4D8] p-8 text-center mb-4">
                 <p className="text-[#9C8E80] text-sm mb-1">
-                  {lang === 'fr' ? 'Aucun événement encore.' : lang === 'es' ? 'Ningún evento todavía.' : 'No events yet.'}
+                  {lang === 'fr' ? 'Aucun événement encore.' : lang === 'es' ? 'Ningún evento todavía.' : lang === 'tr' ? 'Henüz olay yok.' : 'No events yet.'}
                 </p>
                 <p className="text-[#C4B9A8] text-xs">
-                  {lang === 'fr' ? 'Ajoutez les grandes étapes de votre vie.' : lang === 'es' ? 'Añade los grandes momentos de tu vida.' : 'Add the major milestones of your life.'}
+                  {lang === 'fr' ? 'Ajoutez les grandes étapes de votre vie.' : lang === 'es' ? 'Añade los grandes momentos de tu vida.' : lang === 'tr' ? 'Hayatınızın büyük dönüm noktalarını ekleyin.' : 'Add the major milestones of your life.'}
                 </p>
               </div>
             )}
@@ -868,10 +870,10 @@ export default function HomePage() {
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
                             <button
-                              onClick={(e) => { e.stopPropagation(); router.push(`/write/${writeTarget}?inspiration=${encodeURIComponent(lang === 'fr' ? `Racontez-moi ce moment : ${ev.title} (${ev.date})` : lang === 'es' ? `Cuéntame sobre este momento: ${ev.title} (${ev.date})` : `Tell me about this moment: ${ev.title} (${ev.date})`)}`) }}
+                              onClick={(e) => { e.stopPropagation(); router.push(`/write/${writeTarget}?inspiration=${encodeURIComponent(lang === 'fr' ? `Racontez-moi ce moment :  ()` : lang === 'es' ? `Cuéntame sobre este momento:  ()` : lang === 'tr' ? `Bu anı anlatın:  ()` : `Tell me about this moment:  ()`)}`) }}
                               className="text-xs text-[#C4622A] bg-[#C4622A]/10 hover:bg-[#C4622A]/20 px-2.5 py-1 rounded-lg transition-all"
                             >
-                              {lang === 'fr' ? 'Écrire →' : lang === 'es' ? 'Escribir →' : 'Write →'}
+                              {lang === 'fr' ? 'Écrire →' : lang === 'es' ? 'Escribir →' : lang === 'tr' ? 'Yaz →' : 'Write →'}
                             </button>
                             <span className="text-[#9C8E80] text-xs">{expandedEvt === ev.id ? '▲' : '▼'}</span>
                           </div>
@@ -888,21 +890,21 @@ export default function HomePage() {
                               <input
                                 value={ev.title}
                                 onChange={e => store.updateTimelineEvent(ev.id, { title: e.target.value })}
-                                placeholder={lang === 'fr' ? 'Titre…' : lang === 'es' ? 'Título…' : 'Title…'}
+                                placeholder={lang === 'fr' ? 'Titre…' : lang === 'es' ? 'Título…' : lang === 'tr' ? 'Başlık…' : 'Title…'}
                                 className="flex-1 text-xs text-[#1C1C2E] bg-[#FAF8F4] rounded-lg px-3 py-2 outline-none border border-[#EDE4D8] focus:border-[#C4622A]/40"
                               />
                             </div>
                             <textarea
                               value={ev.description}
                               onChange={e => store.updateTimelineEvent(ev.id, { description: e.target.value })}
-                              placeholder={lang === 'fr' ? 'Notes sur cet événement…' : lang === 'es' ? 'Notas sobre este evento…' : 'Notes about this event…'}
+                              placeholder={lang === 'fr' ? 'Notes sur cet événement…' : lang === 'es' ? 'Notas sobre este evento…' : lang === 'tr' ? 'Bu olay hakkında notlar…' : 'Notes about this event…'}
                               className="w-full mt-2 text-xs text-[#1C1C2E] bg-[#FAF8F4] rounded-lg px-3 py-2 outline-none border border-[#EDE4D8] focus:border-[#C4622A]/40 resize-none"
                               rows={2}
                             />
                             <div className="flex justify-end mt-2">
                               <button onClick={() => store.removeTimelineEvent(ev.id)}
                                 className="text-xs text-red-300 hover:text-red-500 transition-colors">
-                                {lang === 'fr' ? 'Supprimer' : lang === 'es' ? 'Eliminar' : 'Delete'}
+                                {lang === 'fr' ? 'Supprimer' : lang === 'es' ? 'Eliminar' : lang === 'tr' ? 'Sil' : 'Delete'}
                               </button>
                             </div>
                           </div>
@@ -923,7 +925,7 @@ export default function HomePage() {
                     type="text"
                     value={newEvtDate}
                     onChange={e => setNewEvtDate(e.target.value)}
-                    placeholder={lang === 'fr' ? 'Date (ex: 1975, Été 82…)' : lang === 'es' ? 'Fecha (ej: 1975, Verano 82…)' : 'Date (e.g. 1975, Summer 82…)'}
+                    placeholder={lang === 'fr' ? 'Date (ex: 1975, Été 82…)' : lang === 'es' ? 'Fecha (ej: 1975, Verano 82…)' : lang === 'tr' ? 'Tarih (ör: 1975, Yaz 82…)' : 'Date (e.g. 1975, Summer 82…)'}
                     className="w-40 text-sm text-[#1C1C2E] bg-[#FAF8F4] rounded-xl px-4 py-2.5 outline-none border border-[#EDE4D8] focus:border-[#C4622A]/40"
                   />
                   <input
@@ -931,14 +933,14 @@ export default function HomePage() {
                     value={newEvtTitle}
                     onChange={e => setNewEvtTitle(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && newEvtTitle.trim() && (store.addTimelineEvent({ date: newEvtDate, title: newEvtTitle.trim(), description: newEvtDesc }), setNewEvtDate(''), setNewEvtTitle(''), setNewEvtDesc(''), setAddingEvent(false))}
-                    placeholder={lang === 'fr' ? 'Événement…' : lang === 'es' ? 'Evento…' : 'Event…'}
+                    placeholder={lang === 'fr' ? 'Événement…' : lang === 'es' ? 'Evento…' : lang === 'tr' ? 'Olay…' : 'Event…'}
                     className="flex-1 text-sm text-[#1C1C2E] bg-[#FAF8F4] rounded-xl px-4 py-2.5 outline-none border border-[#EDE4D8] focus:border-[#C4622A]/40"
                   />
                 </div>
                 <textarea
                   value={newEvtDesc}
                   onChange={e => setNewEvtDesc(e.target.value)}
-                  placeholder={lang === 'fr' ? 'Description (optionnel)…' : lang === 'es' ? 'Descripción (opcional)…' : 'Description (optional)…'}
+                  placeholder={lang === 'fr' ? 'Description (optionnel)…' : lang === 'es' ? 'Descripción (opcional)…' : lang === 'tr' ? 'Açıklama (isteğe bağlı)…' : 'Description (optional)…'}
                   className="w-full text-sm text-[#1C1C2E] bg-[#FAF8F4] rounded-xl px-4 py-2.5 outline-none border border-[#EDE4D8] focus:border-[#C4622A]/40 resize-none mb-3"
                   rows={2}
                 />
@@ -948,18 +950,18 @@ export default function HomePage() {
                     className="flex-1 bg-[#C4622A] text-white text-sm font-medium py-2 rounded-xl hover:opacity-90 transition-all disabled:opacity-40"
                     disabled={!newEvtTitle.trim()}
                   >
-                    {lang === 'fr' ? 'Ajouter' : lang === 'es' ? 'Añadir' : 'Add'}
+                    {lang === 'fr' ? 'Ajouter' : lang === 'es' ? 'Añadir' : lang === 'tr' ? 'Ekle' : 'Add'}
                   </button>
                   <button onClick={() => { setAddingEvent(false); setNewEvtDate(''); setNewEvtTitle(''); setNewEvtDesc('') }}
                     className="text-sm text-[#9C8E80] px-4 hover:text-[#1C1C2E] transition-colors">
-                    {lang === 'fr' ? 'Annuler' : lang === 'es' ? 'Cancelar' : 'Cancel'}
+                    {lang === 'fr' ? 'Annuler' : lang === 'es' ? 'Cancelar' : lang === 'tr' ? 'İptal' : 'Cancel'}
                   </button>
                 </div>
               </div>
             ) : (
               <button onClick={() => setAddingEvent(true)}
                 className="w-full bg-white border-2 border-dashed border-[#EDE4D8] rounded-2xl py-4 text-sm text-[#9C8E80] hover:border-[#C4622A]/40 hover:text-[#C4622A] transition-all">
-                + {lang === 'fr' ? 'Ajouter un événement' : lang === 'es' ? 'Añadir un evento' : 'Add an event'}
+                + {lang === 'fr' ? 'Ajouter un événement' : lang === 'es' ? 'Añadir un evento' : lang === 'tr' ? 'Olay ekle' : 'Add an event'}
               </button>
             )}
           </div>
@@ -971,10 +973,10 @@ export default function HomePage() {
             {/* Note type labels */}
             {(() => {
               const NOTE_TYPES: { id: 'research' | 'verify' | 'ask' | 'idea'; icon: string; label: string }[] = [
-                { id: 'research', icon: '🔍', label: lang === 'fr' ? 'Rechercher' : lang === 'es' ? 'Investigar' : 'Research' },
-                { id: 'verify', icon: '✓', label: lang === 'fr' ? 'Vérifier' : lang === 'es' ? 'Verificar' : 'Verify' },
-                { id: 'ask', icon: '↗', label: lang === 'fr' ? 'Demander' : lang === 'es' ? 'Preguntar' : 'Ask' },
-                { id: 'idea', icon: '✦', label: lang === 'fr' ? 'Idée' : lang === 'es' ? 'Idea' : 'Idea' },
+                { id: 'research', icon: '🔍', label: lang === 'fr' ? 'Rechercher' : lang === 'es' ? 'Investigar' : lang === 'tr' ? 'Araştır' : 'Research' },
+                { id: 'verify', icon: '✓', label: lang === 'fr' ? 'Vérifier' : lang === 'es' ? 'Verificar' : lang === 'tr' ? 'Doğrula' : 'Verify' },
+                { id: 'ask', icon: '↗', label: lang === 'fr' ? 'Demander' : lang === 'es' ? 'Preguntar' : lang === 'tr' ? 'Sor' : 'Ask' },
+                { id: 'idea', icon: '✦', label: lang === 'fr' ? 'Idée' : lang === 'es' ? 'Idea' : lang === 'tr' ? 'Fikir' : 'Idea' },
               ]
 
               const pending = store.researchNotes.filter(n => !n.done)
@@ -999,10 +1001,10 @@ export default function HomePage() {
                         onChange={e => setNewNoteText(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter' && newNoteText.trim()) { e.preventDefault(); store.addResearchNote({ type: newNoteType, text: newNoteText.trim(), done: false }); setNewNoteText('') } }}
                         placeholder={
-                          newNoteType === 'research' ? (lang === 'fr' ? 'Rechercher...' : 'Research...') :
-                          newNoteType === 'verify' ? (lang === 'fr' ? 'Vérifier que...' : 'Verify that...') :
-                          newNoteType === 'ask' ? (lang === 'fr' ? 'Demander à... au sujet de...' : 'Ask... about...') :
-                          (lang === 'fr' ? 'Une idée...' : 'An idea...')
+                          newNoteType === 'research' ? (lang === 'fr' ? 'Rechercher...' : lang === 'tr' ? 'Araştır...' : 'Research...') :
+                          newNoteType === 'verify' ? (lang === 'fr' ? 'Vérifier que...' : lang === 'tr' ? 'Şunu doğrula...' : 'Verify that...') :
+                          newNoteType === 'ask' ? (lang === 'fr' ? 'Demander à... au sujet de...' : lang === 'tr' ? '... hakkında sor...' : 'Ask... about...') :
+                          (lang === 'fr' ? 'Une idée...' : lang === 'tr' ? 'Bir fikir...' : 'An idea...')
                         }
                         className="flex-1 text-sm text-[#1C1C2E] bg-[#FAF8F4] rounded-xl px-4 py-2.5 outline-none border border-[#EDE4D8] focus:border-[#C4622A]/40"
                       />
@@ -1019,8 +1021,8 @@ export default function HomePage() {
                   {/* Pending notes */}
                   {pending.length === 0 && done.length === 0 && (
                     <div className="bg-white rounded-2xl border border-[#EDE4D8] p-8 text-center">
-                      <p className="text-[#9C8E80] text-sm">{lang === 'fr' ? 'Aucune note encore.' : lang === 'es' ? 'Sin notas todavía.' : 'No notes yet.'}</p>
-                      <p className="text-[#C4B9A8] text-xs mt-1">{lang === 'fr' ? 'Ajoutez vos recherches et vérifications.' : lang === 'es' ? 'Añade tus investigaciones y verificaciones.' : 'Add your research and checks.'}</p>
+                      <p className="text-[#9C8E80] text-sm">{lang === 'fr' ? 'Aucune note encore.' : lang === 'es' ? 'Sin notas todavía.' : lang === 'tr' ? 'Henüz not yok.' : 'No notes yet.'}</p>
+                      <p className="text-[#C4B9A8] text-xs mt-1">{lang === 'fr' ? 'Ajoutez vos recherches et vérifications.' : lang === 'es' ? 'Añade tus investigaciones y verificaciones.' : lang === 'tr' ? 'Araştırmalarınızı ve kontrollerinizi ekleyin.' : 'Add your research and checks.'}</p>
                     </div>
                   )}
 
@@ -1041,7 +1043,7 @@ export default function HomePage() {
                   {/* Done notes */}
                   {done.length > 0 && (
                     <div className="mt-2">
-                      <p className="text-[10px] text-[#9C8E80] tracking-widest uppercase mb-2 px-1">{lang === 'fr' ? 'Terminé' : lang === 'es' ? 'Hecho' : 'Done'}</p>
+                      <p className="text-[10px] text-[#9C8E80] tracking-widest uppercase mb-2 px-1">{lang === 'fr' ? 'Terminé' : lang === 'es' ? 'Hecho' : lang === 'tr' ? 'Tamamlandı' : 'Done'}</p>
                       {done.map(note => {
                         const t = NOTE_TYPES.find(t => t.id === note.type)
                         return (
@@ -1178,13 +1180,15 @@ export default function HomePage() {
               ? '✦ Posez les fondations de votre livre pour des séances plus riches'
               : store.lang === 'es'
               ? '✦ Establece las bases de tu libro para sesiones más ricas'
+              : store.lang === 'tr'
+              ? '✦ Daha zengin yazı seansları için kitabınızın temellerini atın'
               : '✦ Set your book foundations to enrich your writing sessions'}
           </p>
           <button
             onClick={() => router.push('/fondations')}
             className="flex-shrink-0 text-xs font-medium text-[#C4622A] hover:underline"
           >
-            {store.lang === 'fr' ? 'Compléter →' : store.lang === 'es' ? 'Completar →' : 'Complete →'}
+            {store.lang === 'fr' ? 'Compléter →' : store.lang === 'es' ? 'Completar →' : store.lang === 'tr' ? 'Tamamla →' : 'Complete →'}
           </button>
         </div>
       )}
@@ -1245,10 +1249,10 @@ export default function HomePage() {
                 >
                   <div className="text-left">
                     <p className="text-[10px] text-[#FAF8F4]/40 tracking-widest uppercase mb-0.5">
-                      {store.lang === 'fr' ? 'Prochaine séance' : store.lang === 'es' ? 'Próxima sesión' : 'Next session'}
+                      {store.lang === 'fr' ? 'Prochaine séance' : store.lang === 'es' ? 'Próxima sesión' : store.lang === 'tr' ? 'Sonraki seans' : 'Next session'}
                     </p>
                     <p className="font-display text-base italic text-[#FAF8F4]">
-                      {store.lang === 'fr' ? `Chapitre ${next.number} · ${next.title}` : `Chapter ${next.number} · ${next.title}`}
+                      {store.lang === 'fr' ? `Chapitre ${next.number} · ${next.title}` : store.lang === 'tr' ? `Bölüm ${next.number} · ${next.title}` : `Chapter ${next.number} · ${next.title}`}
                     </p>
                   </div>
                   <span className="text-[#C4622A] group-hover:text-[#FAF8F4] text-xl transition-colors">✦</span>
@@ -1384,7 +1388,7 @@ export default function HomePage() {
                 className="text-[10px] text-[#C4B9A8]/50 hover:text-[#7A4F32] transition-colors tracking-wide flex items-center gap-1.5"
               >
                 <span className="text-[#C4622A]/40">✦</span>
-                {store.lang === 'fr' ? 'Citations' : store.lang === 'es' ? 'Citas' : 'Quotes'}
+                {store.lang === 'fr' ? 'Citations' : store.lang === 'es' ? 'Citas' : store.lang === 'tr' ? 'Alıntılar' : 'Quotes'}
                 {store.savedQuotes?.length > 0 && (
                   <span className="text-[#C4622A]/60">{store.savedQuotes.length}</span>
                 )}
@@ -1394,21 +1398,21 @@ export default function HomePage() {
                 onClick={() => router.push('/mentions-legales')}
                 className="text-[10px] text-[#C4B9A8]/50 hover:text-[#7A4F32] transition-colors tracking-wide"
               >
-                {store.lang === 'fr' ? 'Mentions légales' : store.lang === 'es' ? 'Aviso legal' : 'Legal Notice'}
+                {store.lang === 'fr' ? 'Mentions légales' : store.lang === 'es' ? 'Aviso legal' : store.lang === 'tr' ? 'Yasal Uyarı' : 'Legal Notice'}
               </button>
               <span className="text-[#C4B9A8]/20 text-[10px]">·</span>
               <button
                 onClick={() => router.push('/privacy')}
                 className="text-[10px] text-[#C4B9A8]/50 hover:text-[#7A4F32] transition-colors tracking-wide"
               >
-                {store.lang === 'fr' ? 'Confidentialité' : store.lang === 'es' ? 'Privacidad' : 'Privacy'}
+                {store.lang === 'fr' ? 'Confidentialité' : store.lang === 'es' ? 'Privacidad' : store.lang === 'tr' ? 'Gizlilik' : 'Privacy'}
               </button>
               <span className="text-[#C4B9A8]/20 text-[10px]">·</span>
               <button
                 onClick={() => router.push('/contact')}
                 className="text-[10px] text-[#C4B9A8]/50 hover:text-[#7A4F32] transition-colors tracking-wide"
               >
-                {store.lang === 'fr' ? 'Contact' : store.lang === 'es' ? 'Contacto' : 'Contact'}
+                {store.lang === 'fr' ? 'Contact' : store.lang === 'es' ? 'Contacto' : store.lang === 'tr' ? 'İletişim' : 'Contact'}
               </button>
             </div>
 
