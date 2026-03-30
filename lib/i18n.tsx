@@ -2,7 +2,7 @@
 
 import { createContext, useContext, ReactNode } from 'react'
 
-export type Lang = 'fr' | 'en' | 'es'
+export type Lang = 'fr' | 'en' | 'es' | 'tr'
 
 // ── Translations ──────────────────────────────────────────────
 export const T = {
@@ -260,6 +260,116 @@ export const T = {
     },
   },
 
+  tr: {
+    greetings: {
+      morning: 'Günaydın',
+      afternoon: 'İyi günler',
+      evening: 'İyi akşamlar',
+      night: 'İyi geceler',
+    },
+    subs: [
+      'Hikayeniz sizi bekliyor.',
+      'Her kelime kurtarılmış bir anıdır.',
+      'Yazmak, iki kez yaşamaktır.',
+      'Gelecekteki okuyucunuz sizi bekliyor.',
+      'Bugün bir bölüm daha.',
+    ],
+    onboarding: {
+      headline: 'Hikayeniz var olmayı hak ediyor.',
+      sub: 'Adınızla başlayalım.',
+      namePlaceholder: 'Adınız...',
+      nameConfirm: 'Başla →',
+      welcome: (name: string) => `Hoş geldiniz, ${name}.`,
+      firstChapter: 'İlk bölümünüz sizi bekliyor - başlamak için Yazı\'ya tıklayın.',
+    },
+    panels: {
+      writing: 'Yazı',
+      dashboard: 'İlerleme',
+      book: 'Eserim',
+      resources: 'Kaynaklar',
+    },
+    writing: {
+      nextChapter: 'Sonraki bölüm',
+      start: 'Nereden başlanır',
+      chapter: 'Bölüm',
+      writeNow: 'Şimdi yaz →',
+      startSession: 'Yazı seansını başlat →',
+      complete: 'Kitabınız tamamlandı. ✦',
+      inspiredBy: 'İlham veren alıntı',
+      writingPrompt: 'Yazı ipucu',
+    },
+    dashboard: {
+      progress: 'İlerleme',
+      streak: 'Seri',
+      days: (n: number) => `${n} gün`,
+      wordsWritten: 'Yazılan kelimeler',
+      sessions: 'Seanslar',
+      weeklyGoal: 'Haftalık hedef',
+      goalReached: '✦ Haftalık hedef ulaşıldı!',
+      bookProgress: 'Kitap ilerlemesi',
+      rewards: 'Ödüller',
+      unlocked: 'açıldı',
+      encouragements: [
+        'Kitabınız sizi bekliyor.',
+        'Harika başlangıç. Her seans önemli.',
+        'Yarı yoldasınız. Devam edin.',
+        'Kitabınız neredeyse tamamlandı.',
+      ],
+      badges: {
+        firstWord: 'İlk kelime',
+        words100: '100 kelime',
+        streak3: '3 gün',
+        halfBook: 'Yarı kitap',
+        words500: '500 kelime',
+        fullBook: 'Tam kitap',
+      },
+    },
+    book: {
+      yourBook: 'Kitabınız',
+      memoirs: 'Anılarım',
+      preface: 'Önsöz',
+      toc: 'İçindekiler',
+      excerpts: 'Parçalar',
+      export: '↓ Dışa aktar (.txt)',
+      share: '↗ Paylaş',
+      words: 'kelime',
+      notStarted: 'Bu kitap henüz yazılmadı. Ama sizi bekliyor.',
+      prefaceEarly: (name: string) => `${name} hikayesinin hatlarını çizmeye başlıyor.`,
+      prefaceMid: (name: string) => `Yarı yolda, ${name}'in hikayesi şekilleniyor.`,
+      prefaceLate: (name: string) => `${name}'in hikayesi neredeyse tamamlandı. Eşsiz bir tanıklık.`,
+      noContent: '(İçerik kaydedilmedi)',
+    },
+    resources: {
+      glossary: 'Sözlük',
+      glossaryDesc: 'Yaşam anlatısının temel terimleri',
+      editorial: 'Yayın planı',
+      editorialDesc: '7 bölümlük yol haritanız',
+      tips: 'İpuçları',
+      tipsDesc: 'İyi yazmak için yöntemler',
+      questions: 'Sorular',
+      questionsDesc: 'İlhamı açığa çıkarmak için',
+      quoteOfDay: 'Günün alıntısı',
+    },
+    actions: {
+      expand: 'Genişlet',
+      back: '← Geri',
+      export: '↓ Dışa aktar',
+      share: '↗ Paylaş',
+      save: 'Kaydet',
+    },
+    nav: {
+      home: 'Ana Sayfa',
+      book: 'Kitabım',
+      trame: 'Hikayem',
+      write: 'Yaz',
+      calendar: 'Takvim',
+      dashboard: 'Gösterge',
+    },
+    weekly: {
+      wordsThisWeek: (n: number, goal: number) => `${n}/${goal} kelime`,
+    },
+  },
+
   es: {
     greetings: {
       morning: 'Buenos días',
@@ -373,14 +483,14 @@ export const T = {
 
 // ── Memoir Lexicon (brand vocabulary, language-agnostic) ───────
 export const MEMOIR_LEXICON = {
-  seance:    { fr: 'Séance',    en: 'Séance',    es: 'Séance'    }, // writing session
-  plume:     { fr: 'Plume',     en: 'Plume',     es: 'Pluma'     }, // completed session reward
-  eclat:     { fr: 'Éclat',     en: 'Éclat',     es: 'Éclat'     }, // excerpt/highlight
-  trame:     { fr: 'Trame',     en: 'Trame',     es: 'Trama'     }, // narrative arc
-  voix:      { fr: 'Voix',      en: 'Voix',      es: 'Voz'       }, // writing voice
-  rituel:    { fr: 'Rituel',    en: 'Rituel',    es: 'Ritual'    }, // pre-writing moment
-  memorial:  { fr: 'Mémorial',  en: 'Mémorial',  es: 'Memorial'  }, // the complete book
-  empreinte: { fr: 'Empreinte', en: 'Empreinte', es: 'Huella'    }, // legacy/footprint
+  seance:    { fr: 'Séance',    en: 'Séance',    es: 'Séance',    tr: 'Seans'     }, // writing session
+  plume:     { fr: 'Plume',     en: 'Plume',     es: 'Pluma',     tr: 'Kalem'     }, // completed session reward
+  eclat:     { fr: 'Éclat',     en: 'Éclat',     es: 'Éclat',     tr: 'Parıltı'   }, // excerpt/highlight
+  trame:     { fr: 'Trame',     en: 'Trame',     es: 'Trama',     tr: 'Kurgu'     }, // narrative arc
+  voix:      { fr: 'Voix',      en: 'Voix',      es: 'Voz',       tr: 'Ses'       }, // writing voice
+  rituel:    { fr: 'Rituel',    en: 'Rituel',    es: 'Ritual',    tr: 'Ritüel'    }, // pre-writing moment
+  memorial:  { fr: 'Mémorial',  en: 'Mémorial',  es: 'Memorial',  tr: 'Anıtsal'   }, // the complete book
+  empreinte: { fr: 'Empreinte', en: 'Empreinte', es: 'Huella',    tr: 'İz'        }, // legacy/footprint
 } as const
 
 // Writing modes
@@ -391,6 +501,7 @@ export const WRITING_MODES = {
     fr: { label: 'Séance Libre',   desc: 'Écrivez comme ça vient - je suggère en silence' },
     en: { label: 'Free Séance',    desc: 'Write as it comes - I suggest in silence' },
     es: { label: 'Séance Libre',   desc: 'Escribe como te salga - sugiero en silencio' },
+    tr: { label: 'Serbest Seans',  desc: 'Aklınıza geleni yazın - sessizce öneri sunarım' },
   },
   guide: {
     id: 'guide' as const,
@@ -398,6 +509,7 @@ export const WRITING_MODES = {
     fr: { label: 'Voix Guidée',    desc: 'Je vous pose des questions, vous répondez' },
     en: { label: 'Guided Voice',   desc: 'I ask questions, you answer' },
     es: { label: 'Voz Guiada',     desc: 'Te hago preguntas, tú respondes' },
+    tr: { label: 'Rehberli Ses',   desc: 'Sorular sorarım, siz cevaplarsınız' },
   },
   dicte: {
     id: 'dicte' as const,
@@ -405,6 +517,7 @@ export const WRITING_MODES = {
     fr: { label: 'Dictée',         desc: 'Parlez ou écrivez librement - je reformule' },
     en: { label: 'Dictation',      desc: 'Speak or write freely - I rewrite' },
     es: { label: 'Dictado',        desc: 'Habla o escribe libremente - yo reformulo' },
+    tr: { label: 'Dikte',          desc: 'Özgürce konuşun veya yazın - yeniden yazarım' },
   },
 } as const
 
@@ -429,6 +542,12 @@ export const MANIFESTO = {
     { headline: 'Memoir no es un software.', sub: 'Es un compañero. Una voz amable que te guía para poner tus recuerdos en palabras - sin presión, a tu ritmo.' },
     { headline: 'Tres formas de escribir.', sub: 'Libre, guiado o dictado. Tu voz, tus palabras, tu historia - como sea que venga.' },
     { headline: 'Empecemos.', sub: '¿Cómo te llamas?' },
+  ],
+  tr: [
+    { headline: 'Hikayeniz var olmayı hak ediyor.', sub: 'Bir çekmecelerde değil. Bir kitapta.' },
+    { headline: 'Memoir bir yazılım değil.', sub: 'Bir yoldaş. Anılarınızı kelimelerle ifade etmeniz için sizi nazikçe yönlendiren bir ses - baskı olmadan, kendi hızınızda.' },
+    { headline: 'Üç yazma yöntemi.', sub: 'Serbest, rehberli ya da dikte. Sesiniz, kelimeleriniz, hikayeniz - nasıl gelirse gelsin.' },
+    { headline: 'Başlayalım.', sub: 'Adınız ne?' },
   ],
 }
 

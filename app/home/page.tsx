@@ -26,7 +26,6 @@ export default function HomePage() {
   const [transitioning, setTransitioning] = useState(false)
   const [contentVisible, setContentVisible] = useState(true)
   const [activeResource, setActiveResource] = useState(0)
-  const [langPending, setLangPending] = useState<'fr' | 'en' | 'es' | null>(null)
   const [showArchitect, setShowArchitect] = useState(false)
 
   useEffect(() => {
@@ -1114,33 +1113,12 @@ export default function HomePage() {
 
   // Lang toggle
   function LangToggle() {
-    if (langPending) {
-      return (
-        <div className="flex items-center gap-1.5 bg-[#EDE4D8] rounded-full px-3 py-1.5 text-xs">
-          <span className="text-[#7A4F32]">
-            {store.lang === 'fr' ? 'Changer la langue ?' : 'Change language?'}
-          </span>
-          <button
-            onClick={() => { store.setLang(langPending); setLangPending(null) }}
-            className="font-medium text-[#C4622A] hover:underline"
-          >
-            {langPending.toUpperCase()} ✓
-          </button>
-          <button
-            onClick={() => setLangPending(null)}
-            className="text-[#9C8E80] hover:text-[#1C1C2E]"
-          >
-            ✕
-          </button>
-        </div>
-      )
-    }
     return (
       <div className="flex items-center gap-0.5 bg-[#EDE4D8] rounded-full p-0.5">
         {(['fr', 'en', 'es'] as const).map(l => (
           <button
             key={l}
-            onClick={() => l !== store.lang && setLangPending(l)}
+            onClick={() => store.setLang(l)}
             className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
               store.lang === l ? 'bg-[#1C1C2E] text-white' : 'text-[#7A4F32] hover:text-[#1C1C2E]'
             }`}

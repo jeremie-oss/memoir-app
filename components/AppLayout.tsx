@@ -157,8 +157,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <div className="mt-6 pt-4 border-t border-[#EDE4D8] space-y-3 px-2">
         {/* Lang toggle + feedback */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1 bg-[#EDE4D8] rounded-full p-0.5">
-            {(['fr', 'en'] as const).map(l => (
+          <div className="flex items-center gap-0.5 bg-[#EDE4D8] rounded-full p-0.5">
+            {(['fr', 'en', 'es', 'tr'] as const).map(l => (
               <button key={l} onClick={() => store.setLang(l)}
                 className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
                   (store.lang || 'fr') === l ? 'bg-[#1C1C2E] text-white' : 'text-[#7A4F32] hover:text-[#1C1C2E]'
