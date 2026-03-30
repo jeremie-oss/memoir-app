@@ -46,6 +46,13 @@ export default function HomePage() {
     }
   }, [mounted, store.onboardingComplete, router])
 
+  // Redirect to fondations if onboarding done but fondations not yet visited
+  useEffect(() => {
+    if (mounted && store.onboardingComplete && !store.foundationsComplete) {
+      router.push('/fondations')
+    }
+  }, [mounted, store.onboardingComplete, store.foundationsComplete, router])
+
   if (!mounted) return null
 
   const t = T[store.lang]
@@ -1160,6 +1167,26 @@ export default function HomePage() {
           )}
         </div>
       </header>
+
+      {/* ── Fondations nudge banner ───────────────────────────── */}
+      {store.foundationsComplete && store.bookFoundations &&
+       !store.bookFoundations.period && !store.bookFoundations.theme && (
+        <div className="flex-shrink-0 flex items-center justify-between gap-3 px-5 py-2.5 bg-[#C4622A]/10 border-b border-[#C4622A]/20">
+          <p className="text-xs text-[#7A4F32] leading-snug">
+            {store.lang === 'fr'
+              ? '✦ Posez les fondations de votre livre pour des séances plus riches'
+              : store.lang === 'es'
+              ? '✦ Establece las bases de tu libro para sesiones más ricas'
+              : '✦ Set your book foundations to enrich your writing sessions'}
+          </p>
+          <button
+            onClick={() => router.push('/fondations')}
+            className="flex-shrink-0 text-xs font-medium text-[#C4622A] hover:underline"
+          >
+            {store.lang === 'fr' ? 'Compléter →' : store.lang === 'es' ? 'Completar →' : 'Complete →'}
+          </button>
+        </div>
+      )}
 
       {/* ── Main content ──────────────────────────────────────── */}
       <main

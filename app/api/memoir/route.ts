@@ -4,6 +4,10 @@ import { getAgentModel, OPENROUTER_URL } from '@/lib/ai/agent-config'
 type ConvoMsg = { role: 'user' | 'assistant'; content: string }
 
 export async function POST(req: NextRequest) {
+  const contentLength = req.headers.get('content-length')
+  if (contentLength && parseInt(contentLength, 10) > 100_000) {
+    return new Response(JSON.stringify({ error: 'Payload too large' }), { status: 413 })
+  }
   const body = await req.json()
   const { action, chapter, userName, lang, content, conversation, intention, destinataire, sessions, profile, memories } = body as {
     action: 'guide_question' | 'guide_generate' | 'dicte_reformulate' | 'libre_inspire' | 'onboarding_style' | 'entretien_question' | 'entretien_close' | 'upload_analyze' | 'brainstorm_question' | 'brainstorm_generate' | 'archiviste_update' | 'archiviste_gaps' | 'archiviste_style' | 'relecteur_review' | 'architecte_review'

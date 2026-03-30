@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseService as supabase, ensureAuthUser, ensureProject } from '@/lib/supabase/service'
+import { createClient } from '@/lib/supabase/server'
 
 type SavePayload = {
   userId: string       // local UUID — may not exist in auth.users yet
@@ -30,7 +31,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing userId or content' }, { status: 400 })
     }
 
-    const authUserId = await ensureAuthUser(localUserId, userName)
+    // S1: If a real Supabase session exists, use the server-validated user ID
+    // and ignore the client-supplied userId to prevent impersonation.
+    let authUserId: string
+    const isDemoMode = process.env.NEXT_PUBLIC_DEMO_MODE === 'true'
+    if (!isDemoMode) {
+      const supabaseClient = await createClient()
+      const { data: { user } } = await supabaseClient.auth.getUser()
+      authUserId = user ? user.id : await ensureAuthUser(localUserId, userName)
+    } else {
+      authUserId = await ensureAuthUser(localUserId, userName)
+    }
     const project = await ensureProject(authUserId, userName)
     const projectId = project.id
 
