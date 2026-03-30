@@ -169,7 +169,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </div>
           <button
             onClick={() => window.dispatchEvent(new Event('memoir:open-feedback'))}
-            title="Donner mon avis"
+            title={store.lang === 'en' ? 'Give feedback' : store.lang === 'es' ? 'Dar mi opinión' : 'Donner mon avis'}
             className="w-7 h-7 rounded-full bg-[#EDE4D8] hover:bg-[#C4622A]/15 text-[#9C8E80] hover:text-[#C4622A] transition-all flex items-center justify-center"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
