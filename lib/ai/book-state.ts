@@ -87,7 +87,7 @@ export function buildBookState(store: Pick<
 
   return {
     userName: store.userName,
-    lang: store.lang,
+    lang: (store.lang === 'tr' ? 'en' : store.lang) as 'fr' | 'en' | 'es',
     intention: store.profile.intention,
     destinataire: store.profile.destinataire,
     ton: store.profile.ton,

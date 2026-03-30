@@ -98,7 +98,7 @@ export function useNotifications() {
 
   async function showNotification(isNudge = false) {
     const { userName, lang, notifications, profile, lastWrittenDate } = store
-    const msgs = MESSAGES[lang] ?? MESSAGES.fr
+    const msgs = MESSAGES[(lang === 'tr' ? 'en' : lang) as 'fr' | 'en' | 'es'] ?? MESSAGES.fr
     const daysSince = getDaysSinceLastWrite(lastWrittenDate)
 
     const body = isNudge && notifications.nudgeEnabled && daysSince > 0

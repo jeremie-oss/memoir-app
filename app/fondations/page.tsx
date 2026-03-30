@@ -137,7 +137,7 @@ export default function FondationsPage() {
   const router = useRouter()
   const store = useMemoirStore()
   const lang = store.lang
-  const wl = CONTENT[lang]
+  const wl = CONTENT[lang as 'fr' | 'en' | 'es'] ?? CONTENT.fr
   const stepKeys = STEPS
 
   const [stepIdx, setStepIdx] = useState(0)

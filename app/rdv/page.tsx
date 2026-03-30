@@ -162,7 +162,7 @@ export default function RdvPage() {
     en: { title: 'Your Memoir Appointment', sub: 'A conversation with your personal biographer', start: 'Begin the interview →', schedule: 'Schedule', addCal: '+ Add to calendar', close: 'Close the interview', closeHint: 'min. 3 exchanges recommended', closing: 'Synthesizing…', seedsTitle: 'Seeds for your next chapter', seedsDesc: 'These themes emerged from our conversation.', goWrite: 'Write now →', goHome: '← Back to home', answerPh: 'Your answer…', send: 'Send →' },
     es: { title: 'Tu Cita Memoir', sub: 'Una conversación con tu biógrafo personal', start: 'Comenzar la entrevista →', schedule: 'Programar', addCal: '+ Añadir al calendario', close: 'Cerrar la entrevista', closeHint: 'mín. 3 intercambios recomendados', closing: 'Sintetizando…', seedsTitle: 'Semillas para tu próximo capítulo', seedsDesc: 'Estos temas surgieron de nuestra conversación.', goWrite: 'Escribir ahora →', goHome: '← Volver al inicio', answerPh: 'Tu respuesta…', send: 'Enviar →' },
   }
-  const wl = greetingByLang[lang]
+  const wl = greetingByLang[(lang === 'tr' ? 'en' : lang) as 'fr' | 'en' | 'es']
 
   return (
     <div className="min-h-screen bg-[#1C1C2E] flex flex-col">

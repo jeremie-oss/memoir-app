@@ -19,11 +19,12 @@ export default function QuotesPage() {
   const router = useRouter()
   const store = useMemoirStore()
   const lang = store.lang
-  const L = LABELS[lang]
+  const lang3 = (lang === 'tr' ? 'en' : lang) as 'fr' | 'en' | 'es'
+  const L = LABELS[lang3]
 
-  const dailyQuotes = DAILY_QUOTES_BY_LANG[lang] ?? DAILY_QUOTES_BY_LANG.fr
+  const dailyQuotes = DAILY_QUOTES_BY_LANG[lang3] ?? DAILY_QUOTES_BY_LANG.fr
   const chapterQuotes = TRAME_CHAPTERS.map((ch) => {
-    const d = getChapterDisplay(ch, lang)
+    const d = getChapterDisplay(ch, lang3)
     return { text: d.quote, author: d.quoteAuthor, label: `${L.chapter} ${ch.number} · ${d.title}` }
   })
 

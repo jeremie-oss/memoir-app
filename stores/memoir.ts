@@ -59,7 +59,7 @@ export type OnboardingProfile = {
 
 export type MemoirState = {
   // Langue
-  lang: 'fr' | 'en' | 'es'
+  lang: 'fr' | 'en' | 'es' | 'tr'
 
   // Rituel d'écriture
   writingMode: WritingModeId
@@ -134,7 +134,7 @@ export type MemoirState = {
   bornYear: number | null             // année de naissance de l'auteur (ou du sujet en mode accompagnateur)
 
   // Actions
-  setLang: (lang: 'fr' | 'en' | 'es') => void
+  setLang: (lang: 'fr' | 'en' | 'es' | 'tr') => void
   setWritingMode: (mode: WritingModeId) => void
   setManifestoSeen: () => void
   setUserId: (id: string) => void
@@ -190,7 +190,7 @@ function generateId(): string {
 }
 
 const initialState = {
-  lang: 'fr' as 'fr' | 'en' | 'es',
+  lang: 'fr' as 'fr' | 'en' | 'es' | 'tr',
   writingMode: 'libre' as WritingModeId,
   manifestoSeen: false,
   userId: '',

@@ -49,18 +49,19 @@ export default function HomePage() {
   if (!mounted) return null
 
   const t = T[store.lang]
+  const lang3 = (store.lang === 'tr' ? 'en' : store.lang) as 'fr' | 'en' | 'es'
   // ── Computed ───────────────────────────────────────────────
   const nextChapter = getNextChapter(store.chapters)
   const completedCount = getCompletedCount(store.chapters)
   const totalChapters = store.chapters.length
   const totalWords = store.sessions.reduce((s, sess) => s + sess.wordCount, 0)
   const dayIndex = new Date().getDay()
-  const dailyQuotes = DAILY_QUOTES_BY_LANG[store.lang] ?? DAILY_QUOTES_BY_LANG.fr
+  const dailyQuotes = DAILY_QUOTES_BY_LANG[lang3] ?? DAILY_QUOTES_BY_LANG.fr
   const quote = dailyQuotes[dayIndex % dailyQuotes.length]
 
   // Translated chapter display helper
   const tc = (ch: ReturnType<typeof getNextChapter>) =>
-    ch ? getChapterDisplay(ch, store.lang) : null
+    ch ? getChapterDisplay(ch, lang3) : null
   const nextChapterDisplay = tc(nextChapter)
 
   const progress = totalChapters > 0 ? completedCount / totalChapters : 0
@@ -120,10 +121,10 @@ export default function HomePage() {
   }
 
   const RESOURCES = [
-    { id: 'glossary',   title: t.resources.glossary,  icon: '◈', desc: t.resources.glossaryDesc,  items: GLOSSARY_ITEMS[store.lang] },
-    { id: 'editorial',  title: t.resources.editorial, icon: '◎', desc: t.resources.editorialDesc, items: store.chapters.map((ch) => { const d = getChapterDisplay(ch, store.lang); return `${ch.number}. ${d.title} - ${d.subtitle}` }) },
-    { id: 'tips',       title: t.resources.tips,      icon: '✦', desc: t.resources.tipsDesc,       items: TIPS_ITEMS[store.lang] },
-    { id: 'questions',  title: t.resources.questions, icon: '?', desc: t.resources.questionsDesc,  items: QUESTIONS_ITEMS[store.lang] },
+    { id: 'glossary',   title: t.resources.glossary,  icon: '◈', desc: t.resources.glossaryDesc,  items: GLOSSARY_ITEMS[lang3] },
+    { id: 'editorial',  title: t.resources.editorial, icon: '◎', desc: t.resources.editorialDesc, items: store.chapters.map((ch) => { const d = getChapterDisplay(ch, lang3); return `${ch.number}. ${d.title} - ${d.subtitle}` }) },
+    { id: 'tips',       title: t.resources.tips,      icon: '✦', desc: t.resources.tipsDesc,       items: TIPS_ITEMS[lang3] },
+    { id: 'questions',  title: t.resources.questions, icon: '?', desc: t.resources.questionsDesc,  items: QUESTIONS_ITEMS[lang3] },
     { id: 'characters', title: store.lang === 'fr' ? 'Personnages' : store.lang === 'es' ? 'Personajes' : 'Characters', icon: '◎', desc: store.lang === 'fr' ? 'Les personnes de votre histoire' : store.lang === 'es' ? 'Las personas de tu historia' : 'The people in your story', items: [] },
     { id: 'timeline', title: store.lang === 'fr' ? 'Chronologie' : store.lang === 'es' ? 'Cronología' : 'Timeline', icon: '◷', desc: store.lang === 'fr' ? 'Les dates et événements de votre vie' : store.lang === 'es' ? 'Las fechas y eventos de tu vida' : 'The dates and events of your life', items: [] },
     { id: 'notes', title: store.lang === 'fr' ? 'À faire' : store.lang === 'es' ? 'Por hacer' : 'To-do', icon: '✎', desc: store.lang === 'fr' ? 'Recherches, vérifications, questions' : store.lang === 'es' ? 'Investigaciones, verificaciones, preguntas' : 'Research, checks, questions', items: [] },
@@ -271,7 +272,7 @@ export default function HomePage() {
         </div>
         <div className="flex-1 space-y-0.5 overflow-hidden">
           {store.chapters.slice(0, 6).map(ch => {
-            const d = getChapterDisplay(ch, store.lang)
+            const d = getChapterDisplay(ch, lang3)
             return (
               <button
                 key={ch.id}
@@ -489,7 +490,7 @@ export default function HomePage() {
           <p className="text-xs text-[#9C8E80] tracking-widest uppercase mb-4">{t.book.toc}</p>
           <div className="space-y-0.5">
             {store.chapters.map(ch => {
-              const d = getChapterDisplay(ch, store.lang)
+              const d = getChapterDisplay(ch, lang3)
               return (
                 <button
                   key={ch.id}
@@ -522,7 +523,7 @@ export default function HomePage() {
             <p className="text-xs text-[#9C8E80] tracking-widest uppercase mb-4">{t.book.excerpts}</p>
             <div className="space-y-5">
               {written.map(ch => {
-                const d = getChapterDisplay(ch, store.lang)
+                const d = getChapterDisplay(ch, lang3)
                 const content = store.sessions.find(s => s.chapterId === ch.id)?.content || ''
                 return (
                   <div key={ch.id} className="border-l-2 border-[#C4622A]/30 pl-4">

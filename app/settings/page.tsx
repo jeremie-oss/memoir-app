@@ -283,7 +283,8 @@ export default function SettingsPage() {
   const store = useMemoirStore()
   const notifs = useNotifications()
   const lang = store.lang
-  const wl = WL[lang]
+  const lang3 = (lang === 'tr' ? 'en' : lang) as 'fr' | 'en' | 'es'
+  const wl = WL[lang3]
   const f = wl.fields
 
   const [savedFlash, setSavedFlash] = useState(false)
@@ -432,7 +433,7 @@ export default function SettingsPage() {
                 {lang === 'fr' ? 'Exemple de style' : lang === 'es' ? 'Ejemplo de estilo' : 'Style example'}
               </p>
               <p className="font-display italic text-sm text-[#7A4F32] leading-relaxed">
-                "{STYLE_SAMPLES[lang][store.profile.ton as 'romance' | 'biographique' | 'documentaire']}"
+                "{STYLE_SAMPLES[lang3][store.profile.ton as 'romance' | 'biographique' | 'documentaire']}"
               </p>
             </div>
           )}

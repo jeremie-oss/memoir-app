@@ -104,7 +104,7 @@ const CONTENT = {
 export default function MentionsLegalesPage() {
   const router = useRouter()
   const lang = useMemoirStore((s) => s.lang)
-  const c = CONTENT[lang]
+  const c = CONTENT[(lang === 'tr' ? 'en' : lang) as 'fr' | 'en' | 'es']
 
   return (
     <div className="min-h-screen bg-[#F5EFE0] relative">

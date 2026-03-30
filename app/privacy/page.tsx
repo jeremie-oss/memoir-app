@@ -96,7 +96,7 @@ export default function PrivacyPage() {
   const router = useRouter()
   const store = useMemoirStore()
   const lang = store.lang
-  const c = CONTENT[lang]
+  const c = CONTENT[(lang === 'tr' ? 'en' : lang) as 'fr' | 'en' | 'es']
 
   return (
     <div className="min-h-screen bg-[#F5EFE0] relative">

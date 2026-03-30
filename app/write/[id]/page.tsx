@@ -319,9 +319,10 @@ export default function WritePage() {
   const [inspirationQ, setInspirationQ] = useState<string | null>(null)
 
   const rawChapter = store.chapters.find((c) => c.id === chapterId)
-  const chapter = rawChapter ? getChapterDisplay(rawChapter, store.lang) : undefined
   const lang = store.lang
-  const wl = WL[lang]
+  const lang3 = (lang === 'tr' ? 'en' : lang) as 'fr' | 'en' | 'es'
+  const chapter = rawChapter ? getChapterDisplay(rawChapter, lang3) : undefined
+  const wl = WL[lang3]
   const modes = Object.values(WRITING_MODES)
   const isAccomp = store.profile.role === 'accompagnateur'
   const subjectName = store.profile.subjectName || (lang === 'fr' ? 'elle' : lang === 'es' ? 'ella' : 'them')
@@ -759,7 +760,7 @@ export default function WritePage() {
 
         // Fire-and-forget: agents run asynchronously after save, never block navigation
         const savedStore = store // capture stable ref
-        const savedLang = lang
+        const savedLang = lang3
         const savedContent = content
 
         // Archiviste: update Book State with new characters, events, contradictions
@@ -841,7 +842,7 @@ export default function WritePage() {
 
   if (!chapter) return null
 
-  const sessionMsg = getSessionMessage(wordCount, store.userName, lang)
+  const sessionMsg = getSessionMessage(wordCount, store.userName, lang3)
   const userAnswerCount = guideConvo.filter((m) => m.role === 'user').length
   const displayStreaming = aiStreaming && (mode !== 'dicte' || !showReform) && (mode !== 'libre' || !showInspire)
   const timerDisplay = getTimerDisplay()
@@ -910,7 +911,7 @@ export default function WritePage() {
               </p>
               <div className="flex gap-3 justify-center flex-wrap">
                 {modes.map((m) => {
-                  const ml = getModeText(m.id, lang)
+                  const ml = getModeText(m.id, lang3)
                   const isSelected = mode === m.id
                   const meta = MODE_META[m.id as WriteModeId]
                   return (
@@ -919,7 +920,7 @@ export default function WritePage() {
                         <span className={`text-[9px] tracking-wide px-2 py-0.5 rounded-full font-medium transition-all ${
                           isSelected ? 'bg-[#FAF8F4]/20 text-[#FAF8F4]' : 'bg-[#FAF8F4]/5 text-[#9C8E80]/60'
                         }`}>
-                          {meta.badge[lang]}
+                          {meta.badge[lang3]}
                         </span>
                       ) : <span className="h-[18px]" />}
                       <button
@@ -934,14 +935,14 @@ export default function WritePage() {
                         <p className="text-xs font-medium leading-tight text-center">{ml.label}</p>
                       </button>
                       <span className={`text-[9px] transition-all ${isSelected ? 'text-[#9C8E80]/70' : 'text-[#9C8E80]/30'}`}>
-                        {meta.duration[lang]}
+                        {meta.duration[lang3]}
                       </span>
                     </div>
                   )
                 })}
               </div>
               <p className="text-[#9C8E80]/50 text-xs mt-4 italic">
-                {getModeText(mode, lang).desc}
+                {getModeText(mode, lang3).desc}
               </p>
             </div>
 
@@ -1030,7 +1031,7 @@ export default function WritePage() {
                 </div>
                 <div className="overflow-y-auto space-y-2 flex-1">
                   {store.chapters.map(ch => {
-                    const d = getChapterDisplay(ch, store.lang)
+                    const d = getChapterDisplay(ch, lang3)
                     const isCurrent = ch.id === chapterId
                     return (
                       <button
