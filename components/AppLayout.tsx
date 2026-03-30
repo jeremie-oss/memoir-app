@@ -5,11 +5,11 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useMemoirStore, getCompletedCount } from '@/stores/memoir'
 import { T } from '@/lib/i18n'
 
-function getNavItems(lang: 'fr' | 'en' | 'es') {
+function getNavItems(lang: 'fr' | 'en' | 'es' | 'tr') {
   const t = T[lang]
   return [
     {
-      section: lang === 'fr' ? 'MON HISTOIRE' : 'MY STORY',
+      section: lang === 'fr' ? 'MON HISTOIRE' : lang === 'tr' ? 'HİKAYEM' : 'MY STORY',
       links: [
         { href: '/home',      label: t.nav.home,      icon: '⌂' },
         { href: '/book',      label: t.nav.book,      icon: '◻' },
@@ -17,14 +17,14 @@ function getNavItems(lang: 'fr' | 'en' | 'es') {
       ],
     },
     {
-      section: lang === 'fr' ? 'ÉCRITURE' : 'WRITING',
+      section: lang === 'fr' ? 'ÉCRITURE' : lang === 'tr' ? 'YAZMA' : 'WRITING',
       links: [
         { href: '/write-hub', label: t.nav.write,     icon: '✦', cta: true },
         { href: '/calendar',  label: t.nav.calendar,  icon: '⊞' },
       ],
     },
     {
-      section: lang === 'fr' ? 'BILAN' : 'PROGRESS',
+      section: lang === 'fr' ? 'BILAN' : lang === 'tr' ? 'İLERLEME' : 'PROGRESS',
       links: [
         { href: '/dashboard', label: t.nav.dashboard, icon: '◎' },
       ],
