@@ -55,7 +55,10 @@ export default function UploadPage() {
           lang: store.lang,
         }),
       })
-      if (!analyzeRes.ok || !analyzeRes.body) throw new Error('Analysis failed')
+      if (!analyzeRes.ok || !analyzeRes.body) {
+        const errText = await analyzeRes.text().catch(() => '')
+        throw new Error(errText || 'Analysis failed')
+      }
 
       const reader = analyzeRes.body.getReader()
       const decoder = new TextDecoder()

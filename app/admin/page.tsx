@@ -100,6 +100,66 @@ export default function AdminPage() {
   // Request action state
   const [actionId, setActionId] = useState<string | null>(null)
 
+  // User actions
+  const [editUser, setEditUser] = useState<AuthUser | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editPassword, setEditPassword] = useState('')
+  const [userActionMsg, setUserActionMsg] = useState<string | null>(null)
+
+  async function handleUpdateUser(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editUser) return
+    const res = await fetch('/api/admin/update-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: editUser.id, name: editName || undefined, password: editPassword || undefined }),
+    })
+    const result = await res.json()
+    if (result.ok) {
+      setUserActionMsg('Mis à jour')
+      setEditUser(null)
+      fetchData()
+    } else {
+      setUserActionMsg(`Erreur: ${result.error}`)
+    }
+  }
+
+  async function handleBanUser(user: AuthUser, banned: boolean) {
+    if (!confirm(banned ? `Bloquer ${user.email} ?` : `Débloquer ${user.email} ?`)) return
+    const res = await fetch('/api/admin/ban-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user.id, banned }),
+    })
+    const result = await res.json()
+    if (result.ok) { setUserActionMsg(banned ? 'Compte bloqué' : 'Compte débloqué'); fetchData() }
+    else setUserActionMsg(`Erreur: ${result.error}`)
+  }
+
+  async function handleDeleteUser(user: AuthUser) {
+    if (!confirm(`Supprimer définitivement ${user.email} ? Cette action est irréversible.`)) return
+    const res = await fetch('/api/admin/delete-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user.id }),
+    })
+    const result = await res.json()
+    if (result.ok) { setUserActionMsg('Compte supprimé'); fetchData() }
+    else setUserActionMsg(`Erreur: ${result.error}`)
+  }
+
+  async function handleResendCredentials(user: AuthUser) {
+    if (!confirm(`Renvoyer les identifiants à ${user.email} avec un nouveau mot de passe ?`)) return
+    const res = await fetch('/api/admin/resend-credentials', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user.id, email: user.email, name: user.name }),
+    })
+    const result = await res.json()
+    if (result.ok) setUserActionMsg('Email envoyé')
+    else setUserActionMsg(`Erreur: ${result.error}`)
+  }
+
   // URL param feedback (from approve link redirect)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -257,35 +317,109 @@ export default function AdminPage() {
         {/* ── USERS ── */}
         {tab === 'users' && (
           <div className="space-y-3">
+            {userActionMsg && (
+              <div className={`px-5 py-3 rounded-xl text-sm mb-2 ${userActionMsg.startsWith('Erreur') ? 'bg-red-900/30 text-red-400' : 'bg-green-900/30 text-green-400'}`}>
+                {userActionMsg} <button onClick={() => setUserActionMsg(null)} className="ml-2 opacity-60 hover:opacity-100">✕</button>
+              </div>
+            )}
+
+            {/* Modal édition */}
+            {editUser && (
+              <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+                <div className="bg-[#2A2A3E] rounded-2xl p-6 w-full max-w-sm">
+                  <h3 className="font-display text-lg font-semibold mb-4">Modifier {editUser.email}</h3>
+                  <form onSubmit={handleUpdateUser} className="space-y-3">
+                    <div>
+                      <label className="text-[#9C8E80] text-sm block mb-1">Nom</label>
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={e => setEditName(e.target.value)}
+                        placeholder={editUser.name || 'Nom'}
+                        className="w-full px-4 py-2.5 rounded-xl bg-[#1C1C2E] border border-[#3A3A4E] text-[#F5EFE0] outline-none focus:border-[#C4622A]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[#9C8E80] text-sm block mb-1">Nouveau mot de passe</label>
+                      <input
+                        type="text"
+                        value={editPassword}
+                        onChange={e => setEditPassword(e.target.value)}
+                        placeholder="Laisser vide pour ne pas changer"
+                        className="w-full px-4 py-2.5 rounded-xl bg-[#1C1C2E] border border-[#3A3A4E] text-[#F5EFE0] outline-none focus:border-[#C4622A]"
+                      />
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                      <button type="submit" className="flex-1 py-2.5 rounded-xl bg-[#C4622A] text-white text-sm font-medium hover:opacity-90">
+                        Enregistrer
+                      </button>
+                      <button type="button" onClick={() => setEditUser(null)} className="flex-1 py-2.5 rounded-xl bg-[#1C1C2E] text-[#9C8E80] text-sm hover:text-[#F5EFE0]">
+                        Annuler
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
             {data?.users.map(u => {
               const proj = getUserProject(u.id)
               const streak = getUserStreak(u.id)
               return (
-                <div key={u.id} className="bg-[#2A2A3E] rounded-2xl p-5 flex items-center justify-between">
-                  <div>
-                    <p className="font-display text-lg font-semibold">{u.name || '(sans nom)'}</p>
-                    <p className="text-[#9C8E80] text-sm">{u.email}</p>
-                    <p className="text-[#9C8E80] text-xs mt-1">
-                      Inscrit le {new Date(u.created_at).toLocaleDateString('fr-FR')}
-                      {u.last_sign_in_at && ` · Dernière connexion: ${new Date(u.last_sign_in_at).toLocaleDateString('fr-FR')}`}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    {proj ? (
-                      <>
-                        <p className="text-[#C4622A] font-display text-xl font-bold">
-                          {proj.word_count} <span className="text-sm font-normal text-[#9C8E80]">mots</span>
-                        </p>
-                        <p className="text-[#9C8E80] text-xs">{proj.passage_count} passage{proj.passage_count > 1 ? 's' : ''}</p>
-                        {streak && (
-                          <p className="text-[#9C8E80] text-xs">
-                            Série: {streak.current_streak}j · Record: {streak.longest_streak}j
+                <div key={u.id} className="bg-[#2A2A3E] rounded-2xl p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-display text-lg font-semibold">{u.name || '(sans nom)'}</p>
+                      <p className="text-[#9C8E80] text-sm">{u.email}</p>
+                      <p className="text-[#9C8E80] text-xs mt-1">
+                        Inscrit le {new Date(u.created_at).toLocaleDateString('fr-FR')}
+                        {u.last_sign_in_at && ` · Dernière connexion: ${new Date(u.last_sign_in_at).toLocaleDateString('fr-FR')}`}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      {proj ? (
+                        <>
+                          <p className="text-[#C4622A] font-display text-xl font-bold">
+                            {proj.word_count} <span className="text-sm font-normal text-[#9C8E80]">mots</span>
                           </p>
-                        )}
-                      </>
-                    ) : (
-                      <p className="text-[#9C8E80] text-sm italic">Pas encore écrit</p>
-                    )}
+                          <p className="text-[#9C8E80] text-xs">{proj.passage_count} passage{proj.passage_count > 1 ? 's' : ''}</p>
+                          {streak && (
+                            <p className="text-[#9C8E80] text-xs">
+                              Série: {streak.current_streak}j · Record: {streak.longest_streak}j
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-[#9C8E80] text-sm italic">Pas encore écrit</p>
+                      )}
+                    </div>
+                  </div>
+                  {/* Actions */}
+                  <div className="flex gap-2 mt-3 pt-3 border-t border-[#3A3A4E]">
+                    <button
+                      onClick={() => { setEditUser(u); setEditName(u.name || ''); setEditPassword('') }}
+                      className="px-3 py-1.5 rounded-lg bg-[#1C1C2E] text-[#9C8E80] text-xs hover:text-[#F5EFE0] transition-colors"
+                    >
+                      ✏️ Modifier
+                    </button>
+                    <button
+                      onClick={() => handleResendCredentials(u)}
+                      className="px-3 py-1.5 rounded-lg bg-[#1C1C2E] text-[#9C8E80] text-xs hover:text-[#F5EFE0] transition-colors"
+                    >
+                      📧 Renvoyer identifiants
+                    </button>
+                    <button
+                      onClick={() => handleBanUser(u, true)}
+                      className="px-3 py-1.5 rounded-lg bg-[#1C1C2E] text-[#9C8E80] text-xs hover:text-yellow-400 transition-colors"
+                    >
+                      🚫 Bloquer
+                    </button>
+                    <button
+                      onClick={() => handleDeleteUser(u)}
+                      className="px-3 py-1.5 rounded-lg bg-[#1C1C2E] text-[#9C8E80] text-xs hover:text-red-400 transition-colors"
+                    >
+                      🗑 Supprimer
+                    </button>
                   </div>
                 </div>
               )

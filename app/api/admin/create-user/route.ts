@@ -3,6 +3,9 @@ export const dynamic = 'force-dynamic'
 import { createClient } from '@supabase/supabase-js'
 import { createClient as createServerSupabase } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { Resend } from 'resend'
+
+const resend = new Resend(process.env.RESEND_API_KEY)
 
 const ADMIN_EMAILS = ['jeremiebenhamou@gmail.com', 'jeremie@the-tech-nation.com']
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -52,6 +55,33 @@ export async function POST(req: NextRequest) {
 
     if (projErr) {
       console.error('[admin/create-user] project error:', projErr.message)
+    }
+
+    // Envoyer email de bienvenue avec les identifiants
+    try {
+      await resend.emails.send({
+        from: 'M.emoir <noreply@the-tech-nation.com>',
+        to: email,
+        subject: 'Votre accès beta M.emoir',
+        html: `
+          <div style="font-family: Georgia, serif; max-width: 520px; margin: 0 auto; color: #1C1C2E;">
+            <h2 style="color: #C4622A;">Bienvenue sur M.emoir${name ? `, ${name}` : ''} ✦</h2>
+            <p>Votre accès beta est prêt. Voici vos identifiants :</p>
+            <p><strong>Email :</strong> ${email}<br/>
+            <strong>Mot de passe :</strong> ${password}</p>
+            <p>
+              <a href="https://memoir-8v2714i9j-jeremie-3244s-projects.vercel.app/login"
+                 style="background:#C4622A;color:#FAF8F4;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;">
+                Accéder à M.emoir
+              </a>
+            </p>
+            <p style="color:#7A4F32;font-size:13px;">Vous pouvez changer votre mot de passe depuis les paramètres.</p>
+          </div>
+        `,
+      })
+    } catch (emailErr) {
+      console.error('[admin/create-user] email error:', emailErr)
+      // Ne pas bloquer la réponse si l'email échoue
     }
 
     return NextResponse.json({ ok: true, userId, email })

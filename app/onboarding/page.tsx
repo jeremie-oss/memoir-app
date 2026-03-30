@@ -38,6 +38,7 @@ const DUREES = [
   { value: 15, label: '15 min' },
   { value: 30, label: '30 min' },
   { value: 45, label: '45 min' },
+  { value: 0,  label: 'Je ne sais pas' },
 ]
 
 const STYLE_INFO = [
@@ -68,12 +69,12 @@ export default function OnboardingPage() {
   const [prenom, setPrenom] = useState('')
   const [subjectName, setSubjectName] = useState('')
 
-  // Step 1 - intention
-  const [intention, setIntention] = useState('')
+  // Step 1 - intention (multi)
+  const [intentions, setIntentions] = useState<string[]>([])
   const [intentionCustom, setIntentionCustom] = useState('')
 
-  // Step 2 - destinataire
-  const [destinataire, setDestinataire] = useState('')
+  // Step 2 - destinataire (multi)
+  const [destinataires, setDestinataires] = useState<string[]>([])
   const [destinatairePrenom, setDestinatairePrenom] = useState('')
 
   // Step 3 - style (AI)
@@ -110,7 +111,7 @@ export default function OnboardingPage() {
           action: 'onboarding_style',
           userName: prenom,
           lang: store.lang,
-          intention: intention || intentionCustom,
+          intention: intentions.length > 0 ? intentions.join(', ') : intentionCustom,
           destinataire,
           chapter: { title: '', theme: '' },
         }),
@@ -141,13 +142,13 @@ export default function OnboardingPage() {
   function handleFinish() {
     store.setUserName(prenom)
     store.setProfile({
-      intention: intention || intentionCustom,
-      destinataire,
+      intention: intentions.length > 0 ? intentions.join(', ') : intentionCustom,
+      destinataire: destinataires.join(', '),
       destinatairePrenom,
       ton: styleSelected >= 0 ? STYLE_INFO[styleSelected].key : 'biographique',
       styleExtrait: styleSelected >= 0 ? (styleExtraits[styleSelected] ?? '') : '',
       frequence: frequence as 'quotidien' | 'hebdo' | 'libre',
-      duree: duree as 15 | 30 | 45,
+      duree: duree as 15 | 30 | 45 | 0,
       role: role || 'auteur',
       subjectName: role === 'accompagnateur' ? subjectName : '',
     })
@@ -159,8 +160,8 @@ export default function OnboardingPage() {
 
   const canContinue = [
     role !== '' && prenom.trim().length > 0,
-    intention.length > 0 || intentionCustom.trim().length > 0,
-    destinataire.length > 0,
+    intentions.length > 0 || intentionCustom.trim().length > 0,
+    destinataires.length > 0,
     styleSelected >= 0,
     true,
   ][step]
@@ -221,13 +222,19 @@ export default function OnboardingPage() {
         )}
         {step === 1 && (
           <StepIntention
-            intention={intention} setIntention={(v) => { setIntention(v); setIntentionCustom('') }}
-            custom={intentionCustom} setCustom={(v) => { setIntentionCustom(v); setIntention('') }}
+            intentions={intentions}
+            toggleIntention={(v) => {
+              setIntentions(prev => prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v])
+              setIntentionCustom('')
+            }}
+            custom={intentionCustom}
+            setCustom={(v) => { setIntentionCustom(v); setIntentions([]) }}
           />
         )}
         {step === 2 && (
           <StepDestinataire
-            selected={destinataire} setSelected={setDestinataire}
+            selected={destinataires}
+            toggle={(v) => setDestinataires(prev => prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v])}
             prenomDest={destinatairePrenom} setPrenomDest={setDestinatairePrenom}
           />
         )}
@@ -418,9 +425,9 @@ function StepPrenom({
 // ── Step: Intention ────────────────────────────────────────────
 
 function StepIntention({
-  intention, setIntention, custom, setCustom
+  intentions, toggleIntention, custom, setCustom
 }: {
-  intention: string; setIntention: (v: string) => void
+  intentions: string[]; toggleIntention: (v: string) => void
   custom: string; setCustom: (v: string) => void
 }) {
   return (
@@ -431,23 +438,34 @@ function StepIntention({
           Pourquoi écrire<br />
           <em className="text-[#C4622A]">ce livre ?</em>
         </h1>
-        <p className="text-[#9C8E80] text-sm">Votre réponse guidera chaque séance d'écriture.</p>
+        <p className="text-[#9C8E80] text-sm">Plusieurs réponses possibles — elles guideront vos séances.</p>
       </div>
       <div className="flex flex-col gap-3">
-        {INTENTIONS.map(opt => (
-          <button
-            key={opt.id}
-            onClick={() => setIntention(opt.id)}
-            className={`text-left px-5 py-4 rounded-2xl border-2 transition-all text-sm ${
-              intention === opt.id
-                ? 'border-[#C4622A] bg-[#C4622A]/5 text-[#1C1C2E] font-medium'
-                : 'border-[#EDE4D8] text-[#7A4F32] hover:border-[#C4622A]/40 bg-white/60'
-            }`}
-          >
-            {intention === opt.id && <span className="mr-2 text-[#C4622A]">✦</span>}
-            {opt.label}
-          </button>
-        ))}
+        {INTENTIONS.map(opt => {
+          const checked = intentions.includes(opt.id)
+          return (
+            <button
+              key={opt.id}
+              onClick={() => toggleIntention(opt.id)}
+              className={`text-left px-5 py-4 rounded-2xl border-2 transition-all text-sm flex items-center gap-3 ${
+                checked
+                  ? 'border-[#C4622A] bg-[#C4622A]/5 text-[#1C1C2E] font-medium'
+                  : 'border-[#EDE4D8] text-[#7A4F32] hover:border-[#C4622A]/40 bg-white/60'
+              }`}
+            >
+              <span className={`flex-shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
+                checked ? 'border-[#C4622A] bg-[#C4622A]' : 'border-[#C4B9A8]'
+              }`}>
+                {checked && (
+                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                    <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+              </span>
+              {opt.label}
+            </button>
+          )
+        })}
         <input
           type="text"
           value={custom}
@@ -465,9 +483,9 @@ function StepIntention({
 // ── Step: Destinataire ─────────────────────────────────────────
 
 function StepDestinataire({
-  selected, setSelected, prenomDest, setPrenomDest
+  selected, toggle, prenomDest, setPrenomDest
 }: {
-  selected: string; setSelected: (v: string) => void
+  selected: string[]; toggle: (v: string) => void
   prenomDest: string; setPrenomDest: (v: string) => void
 }) {
   return (
@@ -478,24 +496,35 @@ function StepDestinataire({
           Pour qui<br />
           <em className="text-[#C4622A]">ces pages ?</em>
         </h1>
-        <p className="text-[#9C8E80] text-sm">Celui ou ceux qui liront un jour votre histoire.</p>
+        <p className="text-[#9C8E80] text-sm">Ceux qui liront un jour votre histoire — cochez tout ce qui résonne.</p>
       </div>
       <div className="flex flex-col gap-3">
-        {DESTINATAIRES.map(opt => (
-          <button
-            key={opt.id}
-            onClick={() => setSelected(opt.id)}
-            className={`text-left px-5 py-4 rounded-2xl border-2 transition-all text-sm ${
-              selected === opt.id
-                ? 'border-[#C4622A] bg-[#C4622A]/5 text-[#1C1C2E] font-medium'
-                : 'border-[#EDE4D8] text-[#7A4F32] hover:border-[#C4622A]/40 bg-white/60'
-            }`}
-          >
-            {selected === opt.id && <span className="mr-2 text-[#C4622A]">✦</span>}
-            {opt.label}
-          </button>
-        ))}
-        {selected && (
+        {DESTINATAIRES.map(opt => {
+          const checked = selected.includes(opt.id)
+          return (
+            <button
+              key={opt.id}
+              onClick={() => toggle(opt.id)}
+              className={`text-left px-5 py-4 rounded-2xl border-2 transition-all text-sm flex items-center gap-3 ${
+                checked
+                  ? 'border-[#C4622A] bg-[#C4622A]/5 text-[#1C1C2E] font-medium'
+                  : 'border-[#EDE4D8] text-[#7A4F32] hover:border-[#C4622A]/40 bg-white/60'
+              }`}
+            >
+              <span className={`flex-shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
+                checked ? 'border-[#C4622A] bg-[#C4622A]' : 'border-[#C4B9A8]'
+              }`}>
+                {checked && (
+                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                    <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+              </span>
+              {opt.label}
+            </button>
+          )
+        })}
+        {selected.length > 0 && (
           <input
             type="text"
             value={prenomDest}
@@ -626,12 +655,12 @@ function StepRoutine({
 
       <div>
         <p className="text-[11px] text-[#9C8E80] tracking-widest uppercase mb-3">Durée par séance</p>
-        <div className="flex gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {DUREES.map(opt => (
             <button
               key={opt.value}
               onClick={() => setDuree(opt.value)}
-              className={`flex-1 py-4 rounded-2xl border-2 text-sm font-medium transition-all ${
+              className={`py-4 rounded-2xl border-2 text-sm font-medium transition-all ${
                 duree === opt.value
                   ? 'border-[#C4622A] bg-[#C4622A] text-white shadow-md shadow-[#C4622A]/20'
                   : 'border-[#EDE4D8] text-[#7A4F32] bg-white/60 hover:border-[#C4622A]/40'

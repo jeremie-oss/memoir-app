@@ -5,6 +5,11 @@ import { updateSession } from '@/lib/supabase/middleware'
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  // Auth callbacks (recovery, invite, magic link) — toujours traités, même en demo mode
+  if (pathname === '/auth/callback') {
+    return NextResponse.next()
+  }
+
   // Demo mode: pas d'auth, accès direct
   if (process.env.NEXT_PUBLIC_DEMO_MODE === 'true') {
     if (pathname === '/') return NextResponse.redirect(new URL('/home', request.url))

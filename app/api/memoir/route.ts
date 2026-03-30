@@ -451,7 +451,7 @@ export async function POST(req: NextRequest) {
           return new Response('AI_RATE_LIMITED', { status: 429 })
         }
       } catch { /* not JSON */ }
-      return new Response('AI_ERROR', { status: 500 })
+      return new Response(`AI_ERROR: ${err.slice(0, 300)}`, { status: 500 })
     }
 
     // Forward the SSE stream, extracting text deltas
