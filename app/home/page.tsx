@@ -76,7 +76,7 @@ export default function HomePage() {
   const weeklyPct = Math.min(100, Math.round((wordsThisWeek / WEEKLY_GOAL) * 100))
 
   const hour = new Date().getHours()
-  const greetKey = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : hour < 23 ? 'evening' : 'night'
+  const greetKey = hour < 18 ? 'morning' : 'evening'
   const greeting = `${t.greetings[greetKey]}, ${store.userName}.`
   const sub = t.subs[new Date().getDate() % t.subs.length]
 
@@ -1115,7 +1115,7 @@ export default function HomePage() {
   function LangToggle() {
     return (
       <div className="flex items-center gap-0.5 bg-[#EDE4D8] rounded-full p-0.5">
-        {(['fr', 'en', 'es'] as const).map(l => (
+        {(['fr', 'en', 'es', 'tr'] as const).map(l => (
           <button
             key={l}
             onClick={() => store.setLang(l)}
