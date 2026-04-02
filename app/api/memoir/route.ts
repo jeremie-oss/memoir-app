@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { getAgentModel, OPENROUTER_URL } from '@/lib/ai/agent-config'
+import { getAgentModel, getActiveAdapter } from '@/lib/ai/agent-config'
 
 type ConvoMsg = { role: 'user' | 'assistant'; content: string }
 
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   }
   const body = await req.json()
   const { action, chapter, userName, lang, content, conversation, intention, destinataire, sessions, profile, memories } = body as {
-    action: 'guide_question' | 'guide_generate' | 'dicte_reformulate' | 'libre_inspire' | 'onboarding_style' | 'entretien_question' | 'entretien_close' | 'upload_analyze' | 'brainstorm_question' | 'brainstorm_generate' | 'archiviste_update' | 'archiviste_gaps' | 'archiviste_style' | 'archiviste_scan_characters' | 'archiviste_scan_timeline' | 'relecteur_review' | 'architecte_review'
+    action: 'guide_question' | 'guide_generate' | 'dicte_reformulate' | 'libre_inspire' | 'onboarding_style' | 'entretien_question' | 'entretien_close' | 'upload_analyze' | 'brainstorm_question' | 'brainstorm_generate' | 'trame_generate' | 'archiviste_update' | 'archiviste_gaps' | 'archiviste_style' | 'archiviste_scan_characters' | 'archiviste_scan_timeline' | 'relecteur_review' | 'architecte_review'
     chapter?: { title: string; theme: string; prompt?: string }
     userName: string
     lang: 'fr' | 'en' | 'es' | 'tr'
@@ -358,6 +358,57 @@ export async function POST(req: NextRequest) {
     maxTokens = 1500
   }
 
+  // ── TRAME GENERATE (direct prompt, replaces brainstorm flow) ──────────────────
+
+  else if (action === 'trame_generate') {
+    agentId = 'architecte'
+    const { userPrompt, chaptersMax: chapMax, bookFoundations: bf } = body as {
+      userPrompt?: string
+      chaptersMax?: number
+      bookFoundations?: { period: string; keyPeople: string; theme: string; ambition: string } | null
+    }
+    const targetChapters = Math.min(chapMax ?? 10, 20)
+    const memoryContext = (memories ?? []).length > 0
+      ? `\nMemory seeds:\n${(memories ?? []).slice(0, 10).map((m, i) => `${i + 1}. ${m}`).join('\n')}`
+      : ''
+    const foundationsContext = bf
+      ? [
+          bf.period && `Period: ${bf.period}`,
+          bf.keyPeople && `Key people: ${bf.keyPeople}`,
+          bf.theme && `Central theme: ${bf.theme}`,
+          bf.ambition && `Author's intention: ${bf.ambition}`,
+        ].filter(Boolean).join('\n')
+      : ''
+
+    systemPrompt = [
+      `You are an editorial director creating a personalized memoir narrative plan for ${userName || 'the author'}.`,
+      `Generate exactly ${targetChapters} chapters that form a coherent, emotionally resonant arc for their book.`,
+      `The book may be autobiographical, a family chronicle, a tribute, or any other form — infer from the context.`,
+      `Each chapter object must have exactly these keys:`,
+      `- "id": string like "ch-1", "ch-2", etc.`,
+      `- "number": integer (1-based)`,
+      `- "title": evocative chapter title (3-6 words)`,
+      `- "subtitle": short one-line description (8-12 words)`,
+      `- "theme": central theme (2-4 words)`,
+      `- "prompt": concrete, sensory writing prompt question to start writing`,
+      `- "quote": a relevant literary quote`,
+      `- "quoteAuthor": the quote's author`,
+      `- "status": always "unwritten"`,
+      profile?.intention ? `Writing intention: "${profile.intention}"` : '',
+      profile?.destinataire ? `Writing for: "${profile.destinataire}"` : '',
+      profile?.ton ? `Tone preference: ${profile.ton}` : '',
+      foundationsContext,
+      memoryContext,
+      userPrompt ? `Author's description of their book: "${userPrompt}"` : '',
+      `Be specific to what the author shared. Avoid generic chapter titles like "The Beginning" or "Conclusion".`,
+      `CRITICAL: output ONLY a raw JSON array (no markdown, no backticks, no commentary).`,
+      `Language: ${langLabel}.`,
+    ].filter(Boolean).join('\n')
+
+    messages = [{ role: 'user', content: `Generate ${targetChapters} chapters as a raw JSON array.` }]
+    maxTokens = 2000
+  }
+
   // ── ARCHIVISTE ────────────────────────────────────────────────────────────────
 
   else if (action === 'archiviste_update') {
@@ -562,60 +613,46 @@ export async function POST(req: NextRequest) {
     return new Response('Unknown action', { status: 400 })
   }
 
-  const apiKey = process.env.OPENROUTER_API_KEY
+  const adapter = getActiveAdapter()
+  const apiKey = process.env[adapter.apiKeyEnv]
   if (!apiKey) {
-    return new Response('OPENROUTER_API_KEY not configured', { status: 500 })
+    return new Response(`${adapter.apiKeyEnv} not configured`, { status: 500 })
   }
 
   // JSON agents don't stream — they need a complete, parseable response
   const isJsonAgent = ['archiviste_update', 'archiviste_gaps', 'archiviste_scan_characters', 'archiviste_scan_timeline', 'relecteur_review', 'architecte_review'].includes(action)
 
+  const response = await fetch(adapter.url, {
+    method: 'POST',
+    headers: adapter.headers(apiKey),
+    body: JSON.stringify(
+      adapter.buildBody(getAgentModel(agentId), maxTokens, !isJsonAgent, systemPrompt, messages)
+    ),
+  })
+
+  if (!response.ok) {
+    const err = await response.text()
+    console.error(`[memoir/api] ${adapter.apiKeyEnv} error:`, response.status, err.slice(0, 200))
+    const errType = adapter.parseError(response.status, err)
+    if (errType === 'rate_limited') return new Response('AI_RATE_LIMITED',       { status: 429 })
+    if (errType === 'credits')      return new Response('AI_CREDITS_EXHAUSTED',  { status: 402 })
+    if (errType === 'overloaded')   return new Response('AI_OVERLOADED',         { status: 529 })
+    return new Response(`AI_ERROR: ${err.slice(0, 300)}`, { status: 500 })
+  }
+
   try {
-    const response = await fetch(OPENROUTER_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://memoir.app',
-        'X-Title': 'Memoir',
-      },
-      body: JSON.stringify({
-        model: getAgentModel(agentId),
-        max_tokens: maxTokens,
-        stream: !isJsonAgent,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...messages,
-        ],
-      }),
-    })
-
-    if (!response.ok) {
-      const err = await response.text()
-      console.error('[memoir/api] OpenRouter error:', response.status, err)
-      try {
-        const errJson = JSON.parse(err)
-        const code = errJson?.error?.code ?? response.status
-        if (response.status === 402 || code === 402) {
-          return new Response('AI_CREDITS_EXHAUSTED', { status: 402 })
-        }
-        if (response.status === 429 || code === 429) {
-          return new Response('AI_RATE_LIMITED', { status: 429 })
-        }
-      } catch { /* not JSON */ }
-      return new Response(`AI_ERROR: ${err.slice(0, 300)}`, { status: 500 })
-    }
-
     // For JSON agents: return the complete content directly (no streaming)
     if (isJsonAgent) {
-      const json = await response.json()
-      const content: string = json.choices?.[0]?.message?.content ?? ''
+      const json = await response.json() as Record<string, unknown>
+      let content: string = adapter.parseJsonContent(json)
+      // Strip markdown code fences (```json ... ```) that models sometimes add
+      content = content.replace(/^```(?:json)?\s*/m, '').replace(/\s*```\s*$/m, '').trim()
       return new Response(content, {
         headers: { 'Content-Type': 'text/plain; charset=utf-8' },
       })
     }
 
-    // Forward the SSE stream, extracting text deltas
+    // Forward the SSE stream — delta parsing delegated to the active adapter
     const encoder = new TextEncoder()
     const readable = new ReadableStream({
       async start(controller) {
@@ -637,11 +674,9 @@ export async function POST(req: NextRequest) {
             if (data === '[DONE]') continue
 
             try {
-              const parsed = JSON.parse(data)
-              const delta = parsed.choices?.[0]?.delta?.content
-              if (delta) {
-                controller.enqueue(encoder.encode(delta))
-              }
+              const parsed = JSON.parse(data) as Record<string, unknown>
+              const delta = adapter.parseStreamDelta(parsed)
+              if (delta) controller.enqueue(encoder.encode(delta))
             } catch {
               // skip malformed chunks
             }

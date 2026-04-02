@@ -62,10 +62,22 @@ export function BookArchitect({ onClose }: Props) {
         }),
       })
 
-      if (!res.ok) throw new Error('api error')
+      if (!res.ok) {
+        const errText = await res.text()
+        console.error('[BookArchitect] API error:', res.status, errText)
+        throw new Error(`api error ${res.status}: ${errText.slice(0, 200)}`)
+      }
       const text = await res.text()
-      setResult(JSON.parse(text) as ArchitecteResult)
-    } catch {
+      // Robust JSON extraction (handles ```json fences and surrounding text)
+      const start = text.indexOf('{')
+      const end = text.lastIndexOf('}')
+      if (start === -1 || end === -1) {
+        console.error('[BookArchitect] No JSON found in response:', text.slice(0, 300))
+        throw new Error('no json in response')
+      }
+      setResult(JSON.parse(text.slice(start, end + 1)) as ArchitecteResult)
+    } catch (err) {
+      console.error('[BookArchitect] error:', err)
       setError(true)
     } finally {
       setLoading(false)

@@ -11,7 +11,7 @@ export type WritingSession = {
   notes?: string // revision notes / comments on the draft
 }
 
-export type Plan = 'crayon' | 'stilo' | 'plume' | 'gutenberg'
+export type Plan = 'crayon' | 'stilo' | 'plum' | 'gutenberg'
 
 export type Character = {
   id: string
@@ -20,6 +20,7 @@ export type Character = {
   period?: string  // free text: "Actuel", "1975-1985", "Amour de jeunesse", "Décédé 2010"
   notes: string
   description?: string // portrait 2-3 phrases généré par l'Archiviste (Gutenberg only)
+  aliases?: string[]   // autres appellations (ex: "Tatidé", "Maman", "Grand-mère")
 }
 
 export type ResearchNote = {
@@ -34,6 +35,20 @@ export type TimelineEvent = {
   date: string   // free text: "1975", "Été 1982", "Mars 2001", etc.
   title: string
   description: string
+}
+
+export type WritingJournalEntry = {
+  id: string
+  date: string      // ISO date
+  place?: string    // lieu d'écriture
+  mood: string[]    // émotions choisies (max 3)
+  note?: string     // texte libre court
+}
+
+export type AgendaRdv = {
+  id: string
+  datetime: string  // ISO datetime
+  note?: string
 }
 
 export type MemorySeed = {
@@ -119,6 +134,11 @@ export type MemoirState = {
   // Notes de recherche
   researchNotes: ResearchNote[]
 
+  // Agenda d'écriture
+  writingJournal: WritingJournalEntry[]
+  agendaRdvs: AgendaRdv[]
+  sessionGoals: { sessionsPerWeek: number; wordsPerSession: number }
+
   // Citations sauvegardées (7.2)
   savedQuotes: string[]
 
@@ -126,6 +146,11 @@ export type MemoirState = {
   styleFingerprint?: string           // empreinte stylistique extraite par l'Archiviste
   bookGaps: BookGap[]                 // lacunes détectées (chapitres, personnages, chronologie)
   agentSuggestions: AgentSuggestion[] // suggestions Relecteur / Architecte en attente
+
+  // Setup questions (onboarding simplifié)
+  recipient: string        // 'moi' | 'famille' | 'posterite'
+  startingPoint: string    // 'periode' | 'personne' | 'lieu'
+  writingTone: string      // 'intime' | 'chronologique' | 'thematique'
 
   // Fondations du livre (co-construites avant la première séance)
   bookFoundations: {
@@ -150,7 +175,9 @@ export type MemoirState = {
   completeOnboarding: () => void
   saveSession: (session: WritingSession) => void
   updateChapterStatus: (id: string, status: TrameChapter['status']) => void
+  updateChapter: (id: string, updates: Partial<Omit<TrameChapter, 'id'>>) => void
   setChapters: (chapters: TrameChapter[]) => void
+  setPlan: (plan: Plan) => void
   addMemories: (seeds: Omit<MemorySeed, 'id'>[]) => void
   removeMemory: (id: string) => void
   setBrainstormConversation: (convo: ConvoMsg[]) => void
@@ -171,7 +198,13 @@ export type MemoirState = {
   bulkAddTimelineEvents: (events: Omit<TimelineEvent, 'id'>[]) => void
   toggleSavedQuote: (text: string) => void
   setBookFoundations: (f: NonNullable<MemoirState['bookFoundations']>) => void
+  setSetupAnswers: (answers: { recipient?: string; startingPoint?: string; writingTone?: string }) => void
   setBornYear: (year: number | null) => void
+  addWritingJournalEntry: (e: Omit<WritingJournalEntry, 'id'>) => void
+  removeWritingJournalEntry: (id: string) => void
+  addAgendaRdv: (r: Omit<AgendaRdv, 'id'>) => void
+  removeAgendaRdv: (id: string) => void
+  setSessionGoals: (g: Partial<MemoirState['sessionGoals']>) => void
   // Agent actions
   setStyleFingerprint: (fingerprint: string) => void
   setBookGaps: (gaps: BookGap[]) => void
@@ -220,10 +253,13 @@ const initialState = {
     nudgeEnabled: true,
   },
   nextRdv: null as string | null,
-  plan: 'plume' as Plan,
+  plan: 'stilo' as Plan,
   characters: [] as Character[],
   timelineEvents: [] as TimelineEvent[],
   researchNotes: [] as ResearchNote[],
+  writingJournal: [] as WritingJournalEntry[],
+  agendaRdvs: [] as AgendaRdv[],
+  sessionGoals: { sessionsPerWeek: 0, wordsPerSession: 0 },
   savedQuotes: [] as string[],
   styleFingerprint: undefined as string | undefined,
   bookGaps: [] as BookGap[],
@@ -231,6 +267,9 @@ const initialState = {
   bookFoundations: null as MemoirState['bookFoundations'],
   foundationsComplete: false,
   bornYear: null as number | null,
+  recipient: '',
+  startingPoint: '',
+  writingTone: '',
 }
 
 // Normalisation pour déduplication
@@ -315,7 +354,17 @@ export const useMemoirStore = create<MemoirState>()(
           ),
         })),
 
+      updateChapter: (id, updates) =>
+        set((s) => ({
+          chapters: s.chapters.map((ch) =>
+            ch.id === id ? { ...ch, ...updates } : ch
+          ),
+          trameCustom: true,
+        })),
+
       setChapters: (chapters) => set({ chapters, trameCustom: true }),
+
+      setPlan: (plan) => set({ plan }),
 
       addMemories: (seeds) =>
         set((s) => ({
@@ -357,12 +406,21 @@ export const useMemoirStore = create<MemoirState>()(
           const keep = s.characters.find((ch) => ch.id === keepId)
           const remove = s.characters.find((ch) => ch.id === removeId)
           if (!keep || !remove) return {}
+          // Collect all appellations from both characters, minus the new canonical name
+          const allAliases = [
+            ...(keep.aliases ?? []),
+            keep.name,
+            ...(remove.aliases ?? []),
+            remove.name,
+          ].filter((a) => a.toLowerCase().trim() !== canonicalName.toLowerCase().trim())
+          const uniqueAliases = [...new Set(allAliases)]
           const merged: Character = {
             ...keep,
             name: canonicalName,
             period: keep.period || remove.period,
             notes: [keep.notes, remove.notes].filter(Boolean).join(' — ') || '',
             description: keep.description || remove.description,
+            aliases: uniqueAliases.length ? uniqueAliases : undefined,
           }
           return {
             characters: s.characters
@@ -433,6 +491,33 @@ export const useMemoirStore = create<MemoirState>()(
       setBookFoundations: (f) => set({ bookFoundations: f, foundationsComplete: true }),
 
       setBornYear: (year) => set({ bornYear: year }),
+
+      setSetupAnswers: (answers) => set((s) => ({
+        recipient: answers.recipient ?? s.recipient,
+        startingPoint: answers.startingPoint ?? s.startingPoint,
+        writingTone: answers.writingTone ?? s.writingTone,
+      })),
+
+      addWritingJournalEntry: (e) =>
+        set((s) => ({
+          writingJournal: [...(s.writingJournal ?? []), { ...e, id: `jnl-${Date.now()}` }],
+        })),
+
+      removeWritingJournalEntry: (id) =>
+        set((s) => ({ writingJournal: (s.writingJournal ?? []).filter((j) => j.id !== id) })),
+
+      addAgendaRdv: (r) =>
+        set((s) => ({
+          agendaRdvs: [...(s.agendaRdvs ?? []), { ...r, id: `rdv-${Date.now()}` }],
+        })),
+
+      removeAgendaRdv: (id) =>
+        set((s) => ({ agendaRdvs: (s.agendaRdvs ?? []).filter((r) => r.id !== id) })),
+
+      setSessionGoals: (g) =>
+        set((s) => ({
+          sessionGoals: { ...(s.sessionGoals ?? { sessionsPerWeek: 0, wordsPerSession: 0 }), ...g },
+        })),
 
       // Agent actions
       setStyleFingerprint: (fingerprint) => set({ styleFingerprint: fingerprint }),

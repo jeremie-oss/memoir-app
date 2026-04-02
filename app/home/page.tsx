@@ -7,6 +7,7 @@ import { DAILY_QUOTES_BY_LANG, getChapterDisplay } from '@/lib/mock/trame-data'
 import { T } from '@/lib/i18n'
 import { BookArchitect } from '@/components/BookArchitect'
 import ArchivisteScanner from '@/components/ArchivisteScanner'
+import TrameDrawer from '@/components/TrameDrawer'
 
 type PanelId = 'writing' | 'dashboard' | 'book' | 'resources'
 
@@ -44,6 +45,14 @@ export default function HomePage() {
   const [newEvtDesc, setNewEvtDesc] = useState('')
   const [expandedEvt, setExpandedEvt] = useState<string | null>(null)
   const [scannerOpen, setScannerOpen] = useState<'characters' | 'timeline' | null>(null)
+  const [mergeSourceId, setMergeSourceId] = useState<string | null>(null)
+  const [mergeTargetId, setMergeTargetId] = useState<string | null>(null)
+  const [trameOpen, setTrameOpen] = useState(false)
+  // Agenda / journal d'émotions state
+  const [addingJournalEntry, setAddingJournalEntry] = useState(false)
+  const [newJournalPlace, setNewJournalPlace] = useState('')
+  const [newJournalMoods, setNewJournalMoods] = useState<string[]>([])
+  const [newJournalNote, setNewJournalNote] = useState('')
 
   useEffect(() => {
     setMounted(true)
@@ -63,30 +72,22 @@ export default function HomePage() {
     }
   }, [mounted, store.onboardingComplete, router])
 
-  // Redirect to fondations if onboarding done but fondations not yet visited
-  // Skip for existing users who already have sessions (migration: fondationsComplete didn't exist before)
-  useEffect(() => {
-    if (mounted && store.onboardingComplete && !store.foundationsComplete && store.sessions.length === 0) {
-      router.push('/fondations')
-    }
-  }, [mounted, store.onboardingComplete, store.foundationsComplete, store.sessions.length, router])
-
   if (!mounted) return null
 
   const t = T[store.lang]
-  const lang3 = (store.lang === 'tr' ? 'en' : store.lang) as 'fr' | 'en' | 'es'
+  const lang4 = store.lang
   // ── Computed ───────────────────────────────────────────────
   const nextChapter = getNextChapter(store.chapters)
   const completedCount = getCompletedCount(store.chapters)
   const totalChapters = store.chapters.length
   const totalWords = store.sessions.reduce((s, sess) => s + sess.wordCount, 0)
   const dayIndex = new Date().getDay()
-  const dailyQuotes = DAILY_QUOTES_BY_LANG[lang3] ?? DAILY_QUOTES_BY_LANG.fr
+  const dailyQuotes = DAILY_QUOTES_BY_LANG[lang4] ?? DAILY_QUOTES_BY_LANG.fr
   const quote = dailyQuotes[dayIndex % dailyQuotes.length]
 
   // Translated chapter display helper
   const tc = (ch: ReturnType<typeof getNextChapter>) =>
-    ch ? getChapterDisplay(ch, lang3) : null
+    ch ? getChapterDisplay(ch, lang4) : null
   const nextChapterDisplay = tc(nextChapter)
 
   const progress = totalChapters > 0 ? completedCount / totalChapters : 0
@@ -100,6 +101,8 @@ export default function HomePage() {
     .filter(s => new Date(s.date) >= weekAgo)
     .reduce((sum, s) => sum + s.wordCount, 0)
   const weeklyPct = Math.min(100, Math.round((wordsThisWeek / WEEKLY_GOAL) * 100))
+  const sessionsThisWeek = store.sessions.filter(s => new Date(s.date) >= weekAgo).length
+
 
   const hour = new Date().getHours()
   const greetKey = hour < 18 ? 'morning' : 'evening'
@@ -137,26 +140,30 @@ export default function HomePage() {
     fr: ['Anamnèse : retour réflexif sur le passé', 'Trame narrative : arc de votre vie', "Voix d'auteur : votre style singulier", 'Anachronie : rupture dans la chronologie', 'Épiphanie : moment de révélation'],
     en: ['Anamnesis: reflective return to the past', 'Narrative arc: your life structure', "Author's voice: your unique style", 'Anachrony: break in chronology', 'Epiphany: moment of revelation'],
     es: ['Anamnesis: retorno reflexivo al pasado', 'Trama narrativa: el arco de tu vida', 'Voz de autor: tu estilo singular', 'Anacronía: ruptura en la cronología', 'Epifanía: momento de revelación'],
+    tr: ['Anamnez: geçmişe düşünsel dönüş', 'Anlatı yayı: hayatınızın yapısı', 'Yazar sesi: size özgü üslup', 'Kronoloji kırılması: zamanın düzeni dışına çıkmak', 'Epifani: aydınlanma anı'],
   }
   const TIPS_ITEMS = {
     fr: ["Commencez par un souvenir précis : une image, une odeur", "Écrivez vite lors d'une session - corrigez après", "Utilisez la règle des 5 sens pour ancrer le lecteur", "Le dialogue intérieur humanise votre récit", "Pas de perfection : l'authenticité prime sur le style"],
     en: ['Start with a precise memory: an image, a smell', 'Write fast during a session - edit later', 'Use the 5 senses rule to ground the reader', 'Inner dialogue humanizes your narrative', 'No perfection: authenticity beats style'],
     es: ['Empieza con un recuerdo preciso: una imagen, un olor', 'Escribe rápido en sesión - corrige después', 'Usa la regla de los 5 sentidos para anclar al lector', 'El diálogo interior humaniza tu relato', 'Sin perfección: la autenticidad prima sobre el estilo'],
+    tr: ['Kesin bir anıyla başlayın: bir görüntü, bir koku', 'Seans sırasında hızlı yazın — sonra düzeltin', 'Okuyucuyu bağlamak için 5 duyuyu kullanın', 'İç diyalog anlatınızı insanileştirir', 'Mükemmellik değil: özgünlük üslubu geçer'],
   }
   const QUESTIONS_ITEMS = {
     fr: ["Qui étais-je vraiment à cette époque ?", "Qu'est-ce que j'aurais voulu dire à cette personne ?", "Quel était mon secret le mieux gardé ?", "Qu'est-ce que cette épreuve m'a appris sur moi ?", "Quelle scène je n'oublierai jamais ?"],
     en: ["Who was I really at that time?", "What did I wish I had said to that person?", "What was my best-kept secret?", "What did this trial teach me about myself?", "What scene will I never forget?"],
     es: ["¿Quién era yo realmente en esa época?", "¿Qué hubiera querido decirle a esa persona?", "¿Cuál era mi secreto mejor guardado?", "¿Qué me enseñó esa prueba sobre mí mismo/a?", "¿Qué escena nunca olvidaré?"],
+    tr: ["O dönemde gerçekten kim bendim?", "O kişiye ne söylemiş olmayı isterdim?", "En iyi sakladığım sır neydi?", "Bu sınav bana kendim hakkında ne öğretti?", "Hiç unutamayacağım sahne hangisi?"],
   }
 
   const RESOURCES = [
-    { id: 'glossary',   title: t.resources.glossary,  icon: '◈', desc: t.resources.glossaryDesc,  items: GLOSSARY_ITEMS[lang3] },
-    { id: 'editorial',  title: t.resources.editorial, icon: '◎', desc: t.resources.editorialDesc, items: store.chapters.map((ch) => { const d = getChapterDisplay(ch, lang3); return `${ch.number}. ${d.title} - ${d.subtitle}` }) },
-    { id: 'tips',       title: t.resources.tips,      icon: '✦', desc: t.resources.tipsDesc,       items: TIPS_ITEMS[lang3] },
-    { id: 'questions',  title: t.resources.questions, icon: '?', desc: t.resources.questionsDesc,  items: QUESTIONS_ITEMS[lang3] },
+    { id: 'glossary',   title: t.resources.glossary,  icon: '◈', desc: t.resources.glossaryDesc,  items: GLOSSARY_ITEMS[lang4] },
+    { id: 'editorial',  title: t.resources.editorial, icon: '◎', desc: t.resources.editorialDesc, items: store.chapters.map((ch) => { const d = getChapterDisplay(ch, lang4); return `${ch.number}. ${d.title} - ${d.subtitle}` }) },
+    { id: 'tips',       title: t.resources.tips,      icon: '✦', desc: t.resources.tipsDesc,       items: TIPS_ITEMS[lang4] },
+    { id: 'questions',  title: t.resources.questions, icon: '?', desc: t.resources.questionsDesc,  items: QUESTIONS_ITEMS[lang4] },
     { id: 'characters', title: store.lang === 'fr' ? 'Personnages' : store.lang === 'es' ? 'Personajes' : store.lang === 'tr' ? 'Karakterler' : 'Characters', icon: '◎', desc: store.lang === 'fr' ? 'Les personnes de votre histoire' : store.lang === 'es' ? 'Las personas de tu historia' : store.lang === 'tr' ? 'Hikayenizdeki kişiler' : 'The people in your story', items: [] },
     { id: 'timeline', title: store.lang === 'fr' ? 'Chronologie' : store.lang === 'es' ? 'Cronología' : store.lang === 'tr' ? 'Kronoloji' : 'Timeline', icon: '◷', desc: store.lang === 'fr' ? 'Les dates et événements de votre vie' : store.lang === 'es' ? 'Las fechas y eventos de tu vida' : store.lang === 'tr' ? 'Hayatınızın tarihleri ve olayları' : 'The dates and events of your life', items: [] },
     { id: 'notes', title: store.lang === 'fr' ? 'À faire' : store.lang === 'es' ? 'Por hacer' : store.lang === 'tr' ? 'Yapılacaklar' : 'To-do', icon: '✎', desc: store.lang === 'fr' ? 'Recherches, vérifications, questions' : store.lang === 'es' ? 'Investigaciones, verificaciones, preguntas' : store.lang === 'tr' ? 'Araştırmalar, kontroller, sorular' : 'Research, checks, questions', items: [] },
+    { id: 'agenda', title: store.lang === 'fr' ? 'Journal' : store.lang === 'es' ? 'Diario' : store.lang === 'tr' ? 'Günlük' : 'Journal', icon: '◷', desc: store.lang === 'fr' ? 'Vos séances et émotions d\'écriture' : store.lang === 'es' ? 'Sus sesiones y emociones de escritura' : store.lang === 'tr' ? 'Yazma seanslarınız ve duygularınız' : 'Your writing sessions and emotions', items: [] },
   ]
 
   // ── Animation helpers ──────────────────────────────────────
@@ -240,49 +247,71 @@ export default function HomePage() {
 
   function MiniDashboard() {
     const isNew = store.sessions.length === 0
+    // ── Bilan stats ──
+    const totalWordsEstimated = store.sessions.reduce((s, sess) => s + sess.wordCount, 0)
+
+    // Most frequent writing day
+    const dayCounts: Record<number, number> = {}
+    store.sessions.forEach(s => {
+      const dow = new Date(s.date).getDay()
+      dayCounts[dow] = (dayCounts[dow] || 0) + 1
+    })
+    const bestDow = Object.entries(dayCounts).sort((a, b) => b[1] - a[1])[0]
+    const DAY_NAMES = store.lang === 'fr' ? ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'] :
+                     store.lang === 'es' ? ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'] :
+                     store.lang === 'tr' ? ['pazar','pazartesi','salı','çarşamba','perşembe','cuma','cumartesi'] :
+                     ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+    const bestDayName = bestDow ? DAY_NAMES[parseInt(bestDow[0])] : null
+
     return (
       <div className={`flex flex-col h-full gap-3 transition-opacity duration-500 ${isNew ? 'opacity-40' : 'opacity-100'}`}>
-        <div className="flex items-center gap-3">
-          <svg width="50" height="50" viewBox="0 0 50 50" className="flex-shrink-0">
-            <circle cx="25" cy="25" r={radius} fill="none" stroke="#EDE4D8" strokeWidth="3" />
-            <circle cx="25" cy="25" r={radius} fill="none" stroke="#C4622A" strokeWidth="3"
-              strokeLinecap="round" strokeDasharray={circumference}
-              strokeDashoffset={progress === 0 ? circumference : strokeOffset}
-              transform="rotate(-90 25 25)" className="transition-all duration-700" />
-            <text x="25" y="30" textAnchor="middle" fontSize="11" fill="#1C1C2E" fontStyle="italic">
-              {completedCount}/{totalChapters}
-            </text>
-          </svg>
-          <div className="flex-1">
-            <p className="text-xs text-[#9C8E80]">{t.dashboard.progress}</p>
-            <p className="font-display text-lg font-light italic text-[#1C1C2E]">{Math.round(progress * 100)}%</p>
+        {/* 4 stats grid */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-[#FAF8F4] rounded-xl px-3 py-2.5 border border-[#EDE4D8]">
+            <p className="text-[9px] text-[#9C8E80] mb-0.5 uppercase tracking-wide">
+              {store.lang === 'fr' ? 'Séances' : store.lang === 'es' ? 'Sesiones' : store.lang === 'tr' ? 'Seanslar' : 'Sessions'}
+            </p>
+            <p className="font-display text-xl font-light italic text-[#C4622A]">{store.sessions.length}</p>
           </div>
-          <div className="text-right">
-            <p className="text-xs text-[#9C8E80]">
-              {store.lang === 'fr' ? 'Séances écrites' : store.lang === 'es' ? 'Sesiones escritas' : store.lang === 'tr' ? 'Yazılı seanslar' : 'Sessions written'}
+          <div className="bg-[#FAF8F4] rounded-xl px-3 py-2.5 border border-[#EDE4D8]">
+            <p className="text-[9px] text-[#9C8E80] mb-0.5 uppercase tracking-wide">
+              {store.lang === 'fr' ? 'Mots écrits' : store.lang === 'es' ? 'Palabras' : store.lang === 'tr' ? 'Kelimeler' : 'Words'}
+            </p>
+            <p className="font-display text-xl font-light italic text-[#1C1C2E]">{totalWordsEstimated.toLocaleString()}</p>
+          </div>
+          <div className="bg-[#FAF8F4] rounded-xl px-3 py-2.5 border border-[#EDE4D8]">
+            <p className="text-[9px] text-[#9C8E80] mb-0.5 uppercase tracking-wide">
+              {store.lang === 'fr' ? 'Chapitres' : store.lang === 'es' ? 'Capítulos' : store.lang === 'tr' ? 'Bölümler' : 'Chapters'}
+            </p>
+            <p className="font-display text-xl font-light italic text-[#1C1C2E]">{completedCount}/{totalChapters}</p>
+          </div>
+          <div className="bg-[#FAF8F4] rounded-xl px-3 py-2.5 border border-[#EDE4D8]">
+            <p className="text-[9px] text-[#9C8E80] mb-0.5 uppercase tracking-wide">
+              {store.lang === 'fr' ? 'Série' : store.lang === 'es' ? 'Racha' : store.lang === 'tr' ? 'Seri' : 'Streak'}
             </p>
             <p className="font-display text-xl font-light italic text-[#C4622A]">
-              {store.sessions.length}
+              {store.currentStreak}{store.lang === 'fr' ? 'j' : store.lang === 'tr' ? 'g' : 'd'}
             </p>
           </div>
         </div>
-        <div>
-          <div className="flex justify-between text-[10px] text-[#9C8E80] mb-1">
-            <span>{t.dashboard.weeklyGoal}</span>
-            <span className="text-[#C4622A]">{t.weekly.wordsThisWeek(wordsThisWeek, WEEKLY_GOAL)}</span>
-          </div>
-          <div className="h-1.5 bg-[#EDE4D8] rounded-full overflow-hidden">
-            <div className="h-full bg-[#C4622A] rounded-full transition-all" style={{ width: `${weeklyPct}%` }} />
-          </div>
-        </div>
-        <div className="mt-auto">
-          <div className="flex gap-1.5 flex-wrap">
-            {badges.map((b, i) => (
-              <span key={i} title={b.label} className={`text-lg ${b.unlocked ? '' : 'opacity-20 grayscale'}`}>{b.icon}</span>
-            ))}
-          </div>
-          <p className="text-[10px] text-[#9C8E80] mt-1">{unlockedCount}/{badges.length} {t.dashboard.unlocked}</p>
-        </div>
+
+        {/* Bienveillant message */}
+        {bestDayName && store.sessions.length > 0 && (
+          <p className="text-[9px] text-[#9C8E80] italic leading-snug">
+            {store.lang === 'fr' ? `Tu écris habituellement le ${bestDayName}.` :
+             store.lang === 'es' ? `Sueles escribir el ${bestDayName}.` :
+             store.lang === 'tr' ? `Genellikle ${bestDayName} yazıyorsunuz.` :
+             `You usually write on ${bestDayName}s.`}
+          </p>
+        )}
+
+        {/* Planifier CTA */}
+        <button
+          onClick={() => { const next = store.chapters.find(c => c.status !== 'done'); if (next) router.push(`/write/${next.id}`) }}
+          className="w-full text-xs py-2 rounded-xl bg-[#C4622A]/10 text-[#C4622A] font-medium hover:bg-[#C4622A]/20 transition-all"
+        >
+          {store.lang === 'fr' ? '+ Écrire maintenant' : store.lang === 'es' ? '+ Escribir ahora' : store.lang === 'tr' ? '+ Şimdi Yaz' : '+ Write now'}
+        </button>
       </div>
     )
   }
@@ -301,7 +330,7 @@ export default function HomePage() {
         </div>
         <div className="flex-1 space-y-0.5 overflow-hidden">
           {store.chapters.slice(0, 6).map(ch => {
-            const d = getChapterDisplay(ch, lang3)
+            const d = getChapterDisplay(ch, lang4)
             return (
               <button
                 key={ch.id}
@@ -319,14 +348,12 @@ export default function HomePage() {
             )
           })}
         </div>
-        {!store.trameCustom && (
-          <button
-            onClick={() => router.push('/trame/brainstorm')}
-            className="w-full text-xs py-2 mt-2 rounded-lg bg-[#C4622A]/10 text-[#C4622A] font-medium hover:bg-[#C4622A]/20 transition-all"
-          >
-            {store.lang === 'fr' ? 'Esquisser ma trame' : store.lang === 'es' ? 'Esbozar mi trama' : store.lang === 'tr' ? 'Hikayemi taslakla' : 'Outline my story'}
-          </button>
-        )}
+        <button
+          onClick={() => setTrameOpen(true)}
+          className="w-full text-xs py-2 mt-2 rounded-lg bg-[#C4622A]/10 text-[#C4622A] font-medium hover:bg-[#C4622A]/20 transition-all"
+        >
+          {store.lang === 'fr' ? 'Ouvrir l\'Atelier →' : store.lang === 'es' ? 'Abrir el Taller →' : store.lang === 'tr' ? 'Atölyeyi aç →' : 'Open Workshop →'}
+        </button>
         <div className="flex gap-2 mt-2">
           <button onClick={handleExport} className="flex-1 text-xs py-1.5 border border-[#C4B9A8] rounded-lg text-[#7A4F32] hover:bg-[#EDE4D8] transition-all">
             {t.actions.export}
@@ -343,7 +370,7 @@ export default function HomePage() {
     return (
       <div className="flex flex-col gap-2 h-full">
         <button
-          onClick={() => router.push('/trame/upload')}
+          onClick={() => setTrameOpen(true)}
           className="flex items-start gap-2 p-2 rounded-lg hover:bg-[#F5EFE0] transition-all text-left border border-dashed border-[#C4B9A8]"
         >
           <span className="text-[#C4622A] text-sm flex-shrink-0 mt-0.5">+</span>
@@ -356,19 +383,22 @@ export default function HomePage() {
             </p>
           </div>
         </button>
-        {RESOURCES.map((r, i) => (
-          <button
-            key={i}
-            onClick={() => { setActiveResource(i); expand('resources') }}
-            className="flex items-start gap-2 p-2 rounded-lg hover:bg-[#F5EFE0] transition-all text-left"
-          >
-            <span className="text-[#C4622A] text-sm flex-shrink-0 mt-0.5">{r.icon}</span>
-            <div>
-              <p className="text-xs font-medium text-[#1C1C2E]">{r.title}</p>
-              <p className="text-[10px] text-[#9C8E80] leading-tight">{r.desc}</p>
-            </div>
-          </button>
-        ))}
+        {RESOURCES.map((r, i) => {
+          const isLocked = (r as { locked?: boolean }).locked
+          return (
+            <button
+              key={i}
+              onClick={() => { if (!isLocked) { setActiveResource(i); expand('resources') } }}
+              className={`flex items-start gap-2 p-2 rounded-lg transition-all text-left ${isLocked ? 'opacity-40 cursor-default' : 'hover:bg-[#F5EFE0]'}`}
+            >
+              <span className="text-[#C4622A] text-sm flex-shrink-0 mt-0.5">{isLocked ? '🔒' : r.icon}</span>
+              <div>
+                <p className="text-xs font-medium text-[#1C1C2E]">{r.title}</p>
+                <p className="text-[10px] text-[#9C8E80] leading-tight">{isLocked ? (store.lang === 'fr' ? 'Disponible à partir de Plum' : 'Available from Plum') : r.desc}</p>
+              </div>
+            </button>
+          )
+        })}
       </div>
     )
   }
@@ -478,6 +508,92 @@ export default function HomePage() {
             ))}
           </div>
         </div>
+
+        {/* ── Objectifs de séance ── */}
+        <div className="bg-white rounded-2xl border border-[#EDE4D8] p-5">
+          <p className="text-sm font-medium text-[#1C1C2E] mb-4">
+            {store.lang === 'fr' ? 'Objectifs de régularité' : store.lang === 'es' ? 'Objetivos de regularidad' : 'Consistency goals'}
+          </p>
+          <div className="grid grid-cols-2 gap-5">
+            <div>
+              <p className="text-xs text-[#9C8E80] mb-2">
+                {store.lang === 'fr' ? 'Séances / semaine' : store.lang === 'es' ? 'Sesiones / semana' : 'Sessions / week'}
+              </p>
+              <div className="flex gap-1.5 flex-wrap">
+                {[1, 2, 3, 4, 5, 7].map(n => (
+                  <button
+                    key={n}
+                    onClick={() => store.setSessionGoals({ sessionsPerWeek: store.sessionGoals?.sessionsPerWeek === n ? 0 : n })}
+                    className={`w-8 h-8 rounded-lg text-xs font-medium transition-all ${store.sessionGoals?.sessionsPerWeek === n ? 'bg-[#C4622A] text-white' : 'bg-[#FAF8F4] border border-[#EDE4D8] text-[#7A4F32] hover:border-[#C4622A]/40'}`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs text-[#9C8E80] mb-2">
+                {store.lang === 'fr' ? 'Mots / séance' : store.lang === 'es' ? 'Palabras / sesión' : 'Words / session'}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {[100, 200, 300, 500].map(n => (
+                  <button
+                    key={n}
+                    onClick={() => store.setSessionGoals({ wordsPerSession: store.sessionGoals?.wordsPerSession === n ? 0 : n })}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${store.sessionGoals?.wordsPerSession === n ? 'bg-[#C4622A] text-white' : 'bg-[#FAF8F4] border border-[#EDE4D8] text-[#7A4F32] hover:border-[#C4622A]/40'}`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          {/* Progress bars */}
+          {((store.sessionGoals?.sessionsPerWeek ?? 0) > 0 || (store.sessionGoals?.wordsPerSession ?? 0) > 0) && (
+            <div className="mt-4 pt-4 border-t border-[#EDE4D8] space-y-3">
+              {(store.sessionGoals?.sessionsPerWeek ?? 0) > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-xs text-[#7A4F32]">
+                      {store.lang === 'fr' ? 'Cette semaine' : store.lang === 'es' ? 'Esta semana' : 'This week'}
+                    </p>
+                    <p className="text-xs text-[#9C8E80]">
+                      {sessionsThisWeek} / {store.sessionGoals!.sessionsPerWeek} {store.lang === 'fr' ? 'séances' : store.lang === 'es' ? 'sesiones' : 'sessions'}
+                    </p>
+                  </div>
+                  <div className="h-1.5 bg-[#EDE4D8] rounded-full overflow-hidden">
+                    <div className="h-full bg-[#C4622A] rounded-full transition-all"
+                      style={{ width: `${Math.min(100, (sessionsThisWeek / store.sessionGoals!.sessionsPerWeek) * 100)}%` }} />
+                  </div>
+                  {sessionsThisWeek >= (store.sessionGoals?.sessionsPerWeek ?? 0) && (
+                    <p className="text-[10px] text-[#C4622A] mt-1">
+                      {store.lang === 'fr' ? 'Objectif atteint !' : store.lang === 'es' ? '¡Objetivo logrado!' : 'Goal reached!'}
+                    </p>
+                  )}
+                </div>
+              )}
+              {(store.sessionGoals?.wordsPerSession ?? 0) > 0 && store.sessions.length > 0 && (() => {
+                const lastSession = [...store.sessions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
+                const pct = Math.min(100, (lastSession.wordCount / store.sessionGoals!.wordsPerSession) * 100)
+                return (
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs text-[#7A4F32]">
+                        {store.lang === 'fr' ? 'Dernière séance' : store.lang === 'es' ? 'Última sesión' : 'Last session'}
+                      </p>
+                      <p className="text-xs text-[#9C8E80]">
+                        {lastSession.wordCount} / {store.sessionGoals!.wordsPerSession} {store.lang === 'fr' ? 'mots' : store.lang === 'es' ? 'pal.' : 'words'}
+                      </p>
+                    </div>
+                    <div className="h-1.5 bg-[#EDE4D8] rounded-full overflow-hidden">
+                      <div className="h-full bg-[#7A4F32] rounded-full transition-all" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                )
+              })()}
+            </div>
+          )}
+        </div>
       </div>
     )
   }
@@ -523,7 +639,7 @@ export default function HomePage() {
           <p className="text-xs text-[#9C8E80] tracking-widest uppercase mb-4">{t.book.toc}</p>
           <div className="space-y-0.5">
             {store.chapters.map(ch => {
-              const d = getChapterDisplay(ch, lang3)
+              const d = getChapterDisplay(ch, lang4)
               return (
                 <button
                   key={ch.id}
@@ -556,7 +672,7 @@ export default function HomePage() {
             <p className="text-xs text-[#9C8E80] tracking-widest uppercase mb-4">{t.book.excerpts}</p>
             <div className="space-y-5">
               {written.map(ch => {
-                const d = getChapterDisplay(ch, lang3)
+                const d = getChapterDisplay(ch, lang4)
                 const content = store.sessions.find(s => s.chapterId === ch.id)?.content || ''
                 return (
                   <div key={ch.id} className="border-l-2 border-[#C4622A]/30 pl-4">
@@ -602,21 +718,26 @@ export default function HomePage() {
       <div className="max-w-2xl mx-auto py-4">
         {/* Tab bar */}
         <div className="flex gap-2 mb-6 flex-wrap">
-          {RESOURCES.map((r, i) => (
-            <button key={i} onClick={() => setActiveResource(i)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm transition-all ${
-                activeResource === i ? 'bg-[#1C1C2E] text-white' : 'bg-white border border-[#EDE4D8] text-[#7A4F32] hover:bg-[#F5EFE0]'
-              }`}>
-              <span>{r.icon}</span>{r.title}
-            </button>
-          ))}
+          {RESOURCES.map((r, i) => {
+            const isLocked = (r as { locked?: boolean }).locked
+            return (
+              <button key={i} onClick={() => { if (!isLocked) setActiveResource(i) }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm transition-all ${
+                  activeResource === i ? 'bg-[#1C1C2E] text-white' :
+                  isLocked ? 'bg-[#F5EFE0] border border-[#EDE4D8] text-[#C4B9A8] opacity-50 cursor-default' :
+                  'bg-white border border-[#EDE4D8] text-[#7A4F32] hover:bg-[#F5EFE0]'
+                }`}>
+                <span>{isLocked ? '🔒' : r.icon}</span>{r.title}
+              </button>
+            )
+          })}
         </div>
 
         {/* ── Characters tab ── */}
         {active.id === 'characters' ? (
           <div className="space-y-4">
             {/* Archiviste scan button — Plume & Gutenberg only */}
-            {(store.plan === 'plume' || store.plan === 'gutenberg') ? (
+            {(store.plan === 'plum' || store.plan === 'gutenberg') ? (
               store.sessions.length > 0 ? (
                 <button
                   onClick={() => setScannerOpen('characters')}
@@ -646,7 +767,7 @@ export default function HomePage() {
               <div className="flex items-center gap-2 px-4 py-3 bg-[#F5EFE0] rounded-2xl border border-[#EDE4D8]">
                 <span className="text-[#9C8E80] text-sm">🔒</span>
                 <p className="text-xs text-[#9C8E80]">
-                  {lang === 'fr' ? 'Analyse automatique disponible à partir de Plume.' : 'Auto-analysis available from Plume.'}
+                  {lang === 'fr' ? 'Analyse automatique disponible à partir de Plum.' : 'Auto-analysis available from Plum.'}
                 </p>
               </div>
             )}
@@ -752,6 +873,12 @@ export default function HomePage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-[#1C1C2E] text-sm">{ch.name}</p>
+                    {ch.aliases && ch.aliases.length > 0 && (
+                      <p className="text-[10px] text-[#9C8E80] mt-0.5">
+                        {lang === 'fr' ? 'aussi appelé·e' : 'also known as'}{' '}
+                        <span className="italic">{ch.aliases.join(', ')}</span>
+                      </p>
+                    )}
                     <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                       {ch.relation && (
                         <span className="text-[10px] text-[#C4622A] bg-[#C4622A]/10 px-2 py-0.5 rounded-full">
@@ -809,11 +936,78 @@ export default function HomePage() {
                           </button>
                         ))}
                       </div>
-                      <button onClick={() => store.removeCharacter(ch.id)}
-                        className="text-xs text-red-300 hover:text-red-500 transition-colors ml-2">
-                        {lang === 'fr' ? 'Suppr.' : lang === 'tr' ? 'Sil' : 'Del.'}
-                      </button>
+                      <div className="flex gap-2 items-center ml-2">
+                        {store.characters.length > 1 && (
+                          <button
+                            onClick={() => { setMergeSourceId(ch.id); setMergeTargetId(null) }}
+                            className="text-xs text-[#9C8E80] hover:text-[#C4622A] transition-colors"
+                          >
+                            {lang === 'fr' ? 'Fusionner' : 'Merge'}
+                          </button>
+                        )}
+                        <button onClick={() => store.removeCharacter(ch.id)}
+                          className="text-xs text-red-300 hover:text-red-500 transition-colors">
+                          {lang === 'fr' ? 'Suppr.' : lang === 'tr' ? 'Sil' : 'Del.'}
+                        </button>
+                      </div>
                     </div>
+                    {/* Merge picker — inline, appears only for this card */}
+                    {mergeSourceId === ch.id && (
+                      <div className="mt-3 p-3 bg-[#FDF9F4] rounded-xl border border-[#C4622A]/20">
+                        <p className="text-xs text-[#7A4F32] mb-2">
+                          {lang === 'fr' ? `Fusionner « ${ch.name} » avec :` : `Merge "${ch.name}" with:`}
+                        </p>
+                        <div className="flex flex-col gap-1.5">
+                          {store.characters.filter(c => c.id !== ch.id).map(other => (
+                            <button
+                              key={other.id}
+                              onClick={() => setMergeTargetId(other.id)}
+                              className={`text-left text-xs px-3 py-2 rounded-lg border transition-all ${mergeTargetId === other.id ? 'bg-[#C4622A] text-white border-[#C4622A]' : 'border-[#EDE4D8] text-[#1C1C2E] hover:border-[#C4622A]/40'}`}
+                            >
+                              {other.name} <span className="opacity-60">· {other.relation}</span>
+                            </button>
+                          ))}
+                        </div>
+                        {mergeTargetId && (() => {
+                          const other = store.characters.find(c => c.id === mergeTargetId)!
+                          return (
+                            <div className="mt-3 border-t border-[#EDE4D8] pt-3">
+                              <p className="text-xs text-[#7A4F32] mb-2">
+                                {lang === 'fr' ? 'Quel nom garder ?' : 'Which name to keep?'}
+                              </p>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => { store.mergeCharacters(ch.id, mergeTargetId, ch.name); setMergeSourceId(null); setMergeTargetId(null); setExpandedChar(null) }}
+                                  className="flex-1 text-xs py-2 rounded-lg bg-[#1C1C2E] text-white hover:bg-[#2a2a40] transition-colors"
+                                >
+                                  {ch.name}
+                                </button>
+                                <button
+                                  onClick={() => { store.mergeCharacters(mergeTargetId, ch.id, other.name); setMergeSourceId(null); setMergeTargetId(null); setExpandedChar(null) }}
+                                  className="flex-1 text-xs py-2 rounded-lg bg-[#1C1C2E] text-white hover:bg-[#2a2a40] transition-colors"
+                                >
+                                  {other.name}
+                                </button>
+                              </div>
+                              <button
+                                onClick={() => { setMergeSourceId(null); setMergeTargetId(null) }}
+                                className="w-full text-xs text-[#9C8E80] mt-2 hover:text-[#1C1C2E] transition-colors"
+                              >
+                                {lang === 'fr' ? 'Annuler' : 'Cancel'}
+                              </button>
+                            </div>
+                          )
+                        })()}
+                        {!mergeTargetId && (
+                          <button
+                            onClick={() => { setMergeSourceId(null); setMergeTargetId(null) }}
+                            className="w-full text-xs text-[#9C8E80] mt-2 hover:text-[#1C1C2E] transition-colors"
+                          >
+                            {lang === 'fr' ? 'Annuler' : 'Cancel'}
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -870,7 +1064,7 @@ export default function HomePage() {
           /* ── Timeline tab ── */
           <div className="space-y-4">
             {/* Archiviste scan button — Plume & Gutenberg only */}
-            {(store.plan === 'plume' || store.plan === 'gutenberg') ? (
+            {(store.plan === 'plum' || store.plan === 'gutenberg') ? (
               store.sessions.length > 0 ? (
                 <button
                   onClick={() => setScannerOpen('timeline')}
@@ -895,7 +1089,7 @@ export default function HomePage() {
               <div className="flex items-center gap-2 px-4 py-3 bg-[#F5EFE0] rounded-2xl border border-[#EDE4D8]">
                 <span className="text-[#9C8E80] text-sm">🔒</span>
                 <p className="text-xs text-[#9C8E80]">
-                  {lang === 'fr' ? 'Analyse automatique disponible à partir de Plume.' : 'Auto-analysis available from Plume.'}
+                  {lang === 'fr' ? 'Analyse automatique disponible à partir de Plum.' : 'Auto-analysis available from Plum.'}
                 </p>
               </div>
             )}
@@ -1137,6 +1331,166 @@ export default function HomePage() {
             })()}
           </div>
 
+        ) : active.id === 'agenda' ? (
+
+          /* ── Agenda / Journal tab ── */
+          <div className="space-y-5">
+
+            {/* Journal d'activité */}
+            <div className="bg-white rounded-2xl border border-[#EDE4D8] p-5">
+              <p className="text-xs text-[#9C8E80] tracking-widest uppercase mb-4">
+                {lang === 'fr' ? 'Journal d\'activité' : lang === 'es' ? 'Diario de actividad' : lang === 'tr' ? 'Aktivite günlüğü' : 'Activity journal'}
+              </p>
+              {store.sessions.length === 0 ? (
+                <p className="text-sm text-[#9C8E80] text-center py-4">
+                  {lang === 'fr' ? 'Aucune séance encore.' : lang === 'es' ? 'Ninguna sesión todavía.' : lang === 'tr' ? 'Henüz seans yok.' : 'No sessions yet.'}
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {[...store.sessions].reverse().slice(0, 10).map((s, idx) => {
+                    const d = new Date(s.date)
+                    const dateStr = d.toLocaleDateString(
+                      lang === 'fr' ? 'fr-FR' : lang === 'es' ? 'es-ES' : lang === 'tr' ? 'tr-TR' : 'en-GB',
+                      { weekday: 'short', day: 'numeric', month: 'short' }
+                    )
+                    const MODES: Record<string, string> = {
+                      libre: lang === 'fr' ? 'Libre' : 'Free',
+                      guide: lang === 'fr' ? 'Guidé' : 'Guided',
+                      dicte: lang === 'fr' ? 'Dictée' : 'Dictation',
+                    }
+                    return (
+                      <div key={`${s.chapterId}-${s.date}-${idx}`} className="flex items-center justify-between px-3 py-2.5 bg-[#FAF8F4] rounded-xl">
+                        <div className="flex items-center gap-3">
+                          <span className="text-[#C4622A] text-xs">✦</span>
+                          <div>
+                            <p className="text-xs font-medium text-[#1C1C2E]">{dateStr}</p>
+                            <p className="text-[10px] text-[#9C8E80]">{store.chapters.find(c => c.id === s.chapterId)?.number ? `Ch. ${store.chapters.find(c => c.id === s.chapterId)?.number}` : ''}</p>
+                          </div>
+                        </div>
+                        <p className="text-xs text-[#7A4F32] font-medium">{s.wordCount} {lang === 'fr' ? 'mots' : lang === 'es' ? 'palabras' : lang === 'tr' ? 'kelime' : 'words'}</p>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Journal d'émotions — Plume & Gutenberg */}
+            {(store.plan === 'plum' || store.plan === 'gutenberg') ? (
+              <div className="bg-white rounded-2xl border border-[#EDE4D8] p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-xs text-[#9C8E80] tracking-widest uppercase">
+                    {lang === 'fr' ? 'Journal d\'émotions' : lang === 'es' ? 'Diario emocional' : lang === 'tr' ? 'Duygu günlüğü' : 'Emotion journal'}
+                  </p>
+                  {!addingJournalEntry && (
+                    <button onClick={() => setAddingJournalEntry(true)}
+                      className="text-xs text-[#C4622A] hover:opacity-70 transition-opacity">
+                      + {lang === 'fr' ? 'Ajouter' : lang === 'es' ? 'Añadir' : lang === 'tr' ? 'Ekle' : 'Add'}
+                    </button>
+                  )}
+                </div>
+
+                {addingJournalEntry && (
+                  <div className="mb-4 space-y-3 p-4 bg-[#FAF8F4] rounded-xl border border-[#EDE4D8]">
+                    <input
+                      type="text"
+                      value={newJournalPlace}
+                      onChange={e => setNewJournalPlace(e.target.value)}
+                      placeholder={lang === 'fr' ? 'Lieu (optionnel)...' : lang === 'es' ? 'Lugar (opcional)...' : lang === 'tr' ? 'Yer (isteğe bağlı)...' : 'Place (optional)...'}
+                      className="w-full text-sm text-[#1C1C2E] bg-white rounded-xl px-4 py-2.5 outline-none border border-[#EDE4D8] focus:border-[#C4622A]/40"
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      {(lang === 'fr'
+                        ? ['Serein', 'Nostalgique', 'Joyeux', 'Mélancolique', 'Inspiré', 'Fatigué', 'Ému', 'Incertain']
+                        : lang === 'es'
+                          ? ['Sereno', 'Nostálgico', 'Alegre', 'Melancólico', 'Inspirado', 'Cansado', 'Conmovido', 'Incierto']
+                          : lang === 'tr'
+                            ? ['Sakin', 'Nostaljik', 'Neşeli', 'Melankolik', 'İlhamlı', 'Yorgun', 'Duygulanmış', 'Belirsiz']
+                            : ['Serene', 'Nostalgic', 'Joyful', 'Melancholic', 'Inspired', 'Tired', 'Moved', 'Uncertain']
+                      ).map(mood => (
+                        <button key={mood}
+                          onClick={() => setNewJournalMoods(prev => prev.includes(mood) ? prev.filter(m => m !== mood) : [...prev, mood])}
+                          className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
+                            newJournalMoods.includes(mood)
+                              ? 'bg-[#1C1C2E] text-white border-[#1C1C2E]'
+                              : 'border-[#EDE4D8] text-[#7A4F32] hover:bg-[#F5EFE0]'
+                          }`}>
+                          {mood}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      type="text"
+                      value={newJournalNote}
+                      onChange={e => setNewJournalNote(e.target.value)}
+                      placeholder={lang === 'fr' ? 'Note libre (optionnel)...' : lang === 'es' ? 'Nota libre (opcional)...' : lang === 'tr' ? 'Serbest not (isteğe bağlı)...' : 'Free note (optional)...'}
+                      className="w-full text-sm text-[#1C1C2E] bg-white rounded-xl px-4 py-2.5 outline-none border border-[#EDE4D8] focus:border-[#C4622A]/40"
+                    />
+                    <div className="flex gap-2 justify-end">
+                      <button onClick={() => { setAddingJournalEntry(false); setNewJournalPlace(''); setNewJournalMoods([]); setNewJournalNote('') }}
+                        className="text-xs text-[#9C8E80] px-4 py-2 rounded-xl hover:bg-[#F5EFE0] transition-all">
+                        {lang === 'fr' ? 'Annuler' : lang === 'es' ? 'Cancelar' : lang === 'tr' ? 'İptal' : 'Cancel'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (newJournalMoods.length === 0) return
+                          store.addWritingJournalEntry({ date: new Date().toISOString(), place: newJournalPlace.trim() || undefined, mood: newJournalMoods, note: newJournalNote.trim() || undefined })
+                          setAddingJournalEntry(false); setNewJournalPlace(''); setNewJournalMoods([]); setNewJournalNote('')
+                        }}
+                        disabled={newJournalMoods.length === 0}
+                        className="text-xs bg-[#C4622A] text-white px-4 py-2 rounded-xl hover:opacity-90 transition-all disabled:opacity-30">
+                        {lang === 'fr' ? 'Enregistrer' : lang === 'es' ? 'Guardar' : lang === 'tr' ? 'Kaydet' : 'Save'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {store.writingJournal.length === 0 && !addingJournalEntry ? (
+                  <p className="text-sm text-[#9C8E80] text-center py-4">
+                    {lang === 'fr' ? 'Notez vos humeurs après chaque séance.' : lang === 'es' ? 'Anota tus estados de ánimo después de cada sesión.' : lang === 'tr' ? 'Her seanstan sonra ruh halinizi not edin.' : 'Note your moods after each session.'}
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {[...store.writingJournal].reverse().map(entry => {
+                      const d = new Date(entry.date)
+                      const dateStr = d.toLocaleDateString(
+                        lang === 'fr' ? 'fr-FR' : lang === 'es' ? 'es-ES' : lang === 'tr' ? 'tr-TR' : 'en-GB',
+                        { day: 'numeric', month: 'short' }
+                      )
+                      return (
+                        <div key={entry.id} className="flex items-start gap-3 px-3 py-3 bg-[#FAF8F4] rounded-xl">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[10px] text-[#9C8E80]">{dateStr}</span>
+                              {entry.place && <span className="text-[10px] text-[#C4B9A8]">· {entry.place}</span>}
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {entry.mood.map(m => (
+                                <span key={m} className="text-[10px] bg-[#EDE4D8] text-[#7A4F32] px-2 py-0.5 rounded-full">{m}</span>
+                              ))}
+                            </div>
+                            {entry.note && <p className="text-xs text-[#9C8E80] mt-1 italic">{entry.note}</p>}
+                          </div>
+                          <button onClick={() => store.removeWritingJournalEntry(entry.id)}
+                            className="text-xs text-[#C4B9A8] hover:text-red-400 transition-colors flex-shrink-0">×</button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl border border-[#EDE4D8] p-5 opacity-50">
+                <p className="text-xs text-[#9C8E80] tracking-widest uppercase mb-2">
+                  {lang === 'fr' ? 'Journal d\'émotions' : 'Emotion journal'}
+                </p>
+                <p className="text-sm text-[#9C8E80]">
+                  {lang === 'fr' ? 'Disponible avec Plum et Gutenberg.' : 'Available with Plum and Gutenberg.'}
+                </p>
+              </div>
+            )}
+          </div>
+
         ) : (
           /* ── Regular resource tabs ── */
           <div className="bg-white rounded-2xl border border-[#EDE4D8] p-6 mb-6">
@@ -1232,7 +1586,7 @@ export default function HomePage() {
             <button
               onClick={() => router.push('/settings')}
               title="Mon profil"
-              className="w-7 h-7 rounded-full bg-[#1C1C2E] flex items-center justify-center flex-shrink-0 hover:opacity-70 transition-opacity"
+              className="w-11 h-11 rounded-full bg-[#1C1C2E] flex items-center justify-center flex-shrink-0 hover:opacity-70 transition-opacity"
             >
               <span className="text-[#FAF8F4] text-xs font-display font-bold">
                 {store.userName[0].toUpperCase()}
@@ -1243,8 +1597,7 @@ export default function HomePage() {
       </header>
 
       {/* ── Fondations nudge banner ───────────────────────────── */}
-      {store.foundationsComplete && store.bookFoundations &&
-       !store.bookFoundations.period && !store.bookFoundations.theme && (
+      {!store.foundationsComplete && !store.recipient && (
         <div className="flex-shrink-0 flex items-center justify-between gap-3 px-5 py-2.5 bg-[#C4622A]/10 border-b border-[#C4622A]/20">
           <p className="text-xs text-[#7A4F32] leading-snug">
             {store.lang === 'fr'
@@ -1256,7 +1609,7 @@ export default function HomePage() {
               : '✦ Set your book foundations to enrich your writing sessions'}
           </p>
           <button
-            onClick={() => router.push('/fondations')}
+            onClick={() => router.push('/setup')}
             className="flex-shrink-0 text-xs font-medium text-[#C4622A] hover:underline"
           >
             {store.lang === 'fr' ? 'Compléter →' : store.lang === 'es' ? 'Completar →' : store.lang === 'tr' ? 'Tamamla →' : 'Complete →'}
@@ -1431,26 +1784,22 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* RDV Memoir - full-width coaching strip */}
-              <div className="sm:col-span-2 bg-[#1C1C2E] rounded-2xl px-5 py-4 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-[#C4622A]/20 flex items-center justify-center flex-shrink-0">
-                  <span className="text-[#C4622A] text-base">◈</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[10px] text-[#9C8E80] tracking-widest uppercase font-medium mb-0.5">
-                    RDV Memoir
-                  </p>
-                  <p className="text-sm text-[#FAF8F4]/60 truncate">{rdvDesc}</p>
-                </div>
-                <button
-                  onClick={() => router.push('/rdv')}
-                  className="flex-shrink-0 bg-[#C4622A] text-white text-sm font-medium px-4 py-2 rounded-xl hover:opacity-90 transition-all"
-                >
-                  {rdvCta} →
-                </button>
-              </div>
 
             </div>
+
+            {/* Daily quote — discrete */}
+            {(() => {
+              const quotes = DAILY_QUOTES_BY_LANG[lang4] ?? DAILY_QUOTES_BY_LANG.fr
+              const footerQuote = quotes[(new Date().getDate() + 3) % quotes.length]
+              return (
+                <div className="text-center px-6 py-4 opacity-50 hover:opacity-80 transition-opacity">
+                  <p className="font-display text-sm italic text-[#7A4F32] leading-relaxed">
+                    &ldquo;{footerQuote.text}&rdquo;
+                  </p>
+                  <p className="text-[10px] text-[#9C8E80] mt-1">— {footerQuote.author}</p>
+                </div>
+              )
+            })()}
 
             {/* Footer links */}
             <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pt-4 pb-2">
@@ -1493,6 +1842,9 @@ export default function HomePage() {
 
       {/* BookArchitect modal */}
       {showArchitect && <BookArchitect onClose={() => setShowArchitect(false)} />}
+
+      {/* TrameDrawer */}
+      <TrameDrawer isOpen={trameOpen} onClose={() => setTrameOpen(false)} />
 
       {/* ArchivisteScanner — personnages */}
       {scannerOpen === 'characters' && (
