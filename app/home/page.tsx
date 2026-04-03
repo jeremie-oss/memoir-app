@@ -317,51 +317,97 @@ export default function HomePage() {
   }
 
   function MiniBook() {
-    const isNew = completedCount === 0
+    const totalWords = store.sessions.reduce((sum, s) => sum + (s.wordCount ?? 0), 0)
+    const wordsPerChapter: Record<string, number> = {}
+    for (const s of store.sessions) {
+      wordsPerChapter[s.chapterId] = (wordsPerChapter[s.chapterId] ?? 0) + (s.wordCount ?? 0)
+    }
+    const isFr = store.lang === 'fr'
+    const isEs = store.lang === 'es'
+    const isTr = store.lang === 'tr'
+    const SPINE_HEIGHTS = [20, 16, 22, 18, 14, 20, 16]
+
     return (
-      <div className={`flex flex-col h-full transition-opacity duration-500 ${isNew ? 'opacity-40' : 'opacity-100'}`}>
-        <div className="bg-[#1C1C2E] rounded-xl p-3 mb-3">
-          <p className="font-display text-sm font-light italic text-[#FAF8F4] leading-tight">
-            {store.userName || t.book.memoirs}
-          </p>
-          <p className="text-[#9C8E80] text-[10px] mt-0.5">
-            {new Date().getFullYear()} · {completedCount}/{totalChapters} {store.lang === 'fr' ? 'chapitres' : store.lang === 'tr' ? 'bölümler' : 'chapters'}
-          </p>
+      <div className="flex flex-col h-full gap-2">
+
+        {/* Identity + spine bars */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="font-display text-base font-light italic text-[#1C1C2E] leading-tight truncate">
+              {store.userName || t.book.memoirs}
+            </p>
+            <p className="text-[10px] mt-0.5 text-[#7A4F32]">
+              {completedCount > 0
+                ? `${completedCount}/${totalChapters} ${isFr ? 'rédigés' : isEs ? 'redactados' : isTr ? 'yazıldı' : 'written'} · ${totalWords.toLocaleString()} ${isFr ? 'mots' : isEs ? 'pal.' : isTr ? 'kelime' : 'words'}`
+                : `${totalChapters} ${isFr ? 'chapitres à écrire' : isEs ? 'capítulos por escribir' : isTr ? 'bölüm yazılacak' : 'chapters to write'}`
+              }
+            </p>
+          </div>
+          {/* Book spine — staggered bars, high-contrast */}
+          <div className="flex gap-[3px] items-end flex-shrink-0 pt-1">
+            {store.chapters.slice(0, 7).map((ch, i) => (
+              <div key={ch.id}
+                className={`rounded-[2px] transition-all ${ch.status === 'done' ? 'bg-[#C4622A]' : 'bg-[#1C1C2E]/[0.14]'}`}
+                style={{ width: 5, height: SPINE_HEIGHTS[i % SPINE_HEIGHTS.length] }}
+              />
+            ))}
+            {store.chapters.length > 7 && (
+              <div className="rounded-[2px] bg-[#1C1C2E]/[0.06]" style={{ width: 5, height: 14 }} />
+            )}
+          </div>
         </div>
-        <div className="flex-1 space-y-0.5 overflow-hidden">
-          {store.chapters.slice(0, 6).map(ch => {
+
+        {/* Chapter list */}
+        <div className="flex-1 space-y-px overflow-hidden">
+          {store.chapters.slice(0, 5).map(ch => {
             const d = getChapterDisplay(ch, lang4)
+            const chTitle = store.trameCustom
+              ? d.title
+              : (isFr ? `Chapitre ${ch.number}` : isEs ? `Capítulo ${ch.number}` : isTr ? `Bölüm ${ch.number}` : `Chapter ${ch.number}`)
+            const words = wordsPerChapter[ch.id] ?? 0
+            const isDone = ch.status === 'done'
             return (
-              <button
-                key={ch.id}
-                onClick={() => router.push(`/write/${ch.id}`)}
-                className={`w-full flex items-center gap-2 rounded-lg px-1.5 py-1 -mx-1.5 transition-all hover:bg-[#1C1C2E]/5 text-left`}
+              <button key={ch.id} onClick={() => expand('book')}
+                className="w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[#EDE4D8]/70 transition-colors"
               >
-                <span className={`text-[10px] flex-shrink-0 font-mono w-4 ${ch.status === 'done' ? 'text-[#C4622A]' : 'text-[#D4C9BA]'}`}>
-                  {ch.status === 'done' ? '✓' : ch.number}
+                <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 transition-all ${
+                  isDone ? 'bg-[#C4622A]' : 'border border-[#7A4F32]/25 bg-transparent'
+                }`} />
+                <span className={`text-[10px] flex-1 truncate ${
+                  isDone ? 'text-[#1C1C2E] font-medium' : store.trameCustom ? 'text-[#7A4F32]' : 'text-[#9C8E80]'
+                }`}>
+                  {chTitle}
                 </span>
-                <p className={`text-xs truncate flex-1 ${ch.status === 'done' ? 'text-[#1C1C2E] font-medium' : 'text-[#C4B9A8]'}`}>
-                  {d.title}
-                </p>
-                <span className="text-[9px] text-[#C4B9A8]/40 shrink-0">→</span>
+                {isDone && words > 0 && (
+                  <span className="text-[9px] text-[#C4B9A8] flex-shrink-0 tabular-nums">{words}</span>
+                )}
               </button>
             )
           })}
+          {store.chapters.length > 5 && (
+            <p className="text-[9px] text-[#9C8E80] pl-6 pt-0.5">
+              +{store.chapters.length - 5} {isFr ? 'chapitres' : isEs ? 'capítulos' : isTr ? 'bölüm' : 'chapters'}
+            </p>
+          )}
         </div>
-        <button
-          onClick={() => setTrameOpen(true)}
-          className="w-full text-xs py-2 mt-2 rounded-lg bg-[#C4622A]/10 text-[#C4622A] font-medium hover:bg-[#C4622A]/20 transition-all"
-        >
-          {store.lang === 'fr' ? 'Ouvrir l\'Atelier →' : store.lang === 'es' ? 'Abrir el Taller →' : store.lang === 'tr' ? 'Atölyeyi aç →' : 'Open Workshop →'}
-        </button>
-        <div className="flex gap-2 mt-2">
-          <button onClick={handleExport} className="flex-1 text-xs py-1.5 border border-[#C4B9A8] rounded-lg text-[#7A4F32] hover:bg-[#EDE4D8] transition-all">
-            {t.actions.export}
+
+        {/* Bottom CTA */}
+        {!store.trameCustom ? (
+          <button
+            onClick={() => setTrameOpen(true)}
+            className="w-full flex items-center justify-center gap-1.5 text-[10px] py-2 rounded-xl border border-dashed border-[#C4622A]/40 text-[#C4622A] hover:bg-[#C4622A]/[0.06] transition-all mt-1"
+          >
+            <span>◈</span>
+            <span>{isFr ? 'Générer mon plan IA' : isEs ? 'Generar mi plan IA' : isTr ? 'IA planımı oluştur' : 'Generate my AI plan'}</span>
           </button>
-          <button className="flex-1 text-xs py-1.5 border border-[#C4B9A8] rounded-lg text-[#7A4F32] hover:bg-[#EDE4D8] transition-all">
-            {t.actions.share}
+        ) : (
+          <button
+            onClick={() => expand('book')}
+            className="w-full text-[10px] py-2 mt-1 rounded-xl bg-[#C4622A]/10 text-[#C4622A] font-medium hover:bg-[#C4622A]/20 transition-all"
+          >
+            {isFr ? 'Mon plan éditorial →' : isEs ? 'Mi plan editorial →' : isTr ? 'Yayın planım →' : 'My editorial plan →'}
           </button>
-        </div>
+        )}
       </div>
     )
   }
@@ -388,7 +434,7 @@ export default function HomePage() {
           return (
             <button
               key={i}
-              onClick={() => { if (!isLocked) { setActiveResource(i); expand('resources') } }}
+              onClick={() => { if (!isLocked) { if (r.id === 'editorial') { expand('book') } else { setActiveResource(i); expand('resources') } } }}
               className={`flex items-start gap-2 p-2 rounded-lg transition-all text-left ${isLocked ? 'opacity-40 cursor-default' : 'hover:bg-[#F5EFE0]'}`}
             >
               <span className="text-[#C4622A] text-sm flex-shrink-0 mt-0.5">{isLocked ? '🔒' : r.icon}</span>
@@ -606,69 +652,40 @@ export default function HomePage() {
       : t.book.prefaceLate
     return (
       <div className="max-w-2xl mx-auto py-4">
-        <div className="bg-[#1C1C2E] rounded-2xl p-8 mb-6 text-center">
-          <p className="text-[#9C8E80] text-xs tracking-widest uppercase mb-4">{t.book.yourBook}</p>
-          <h1 className="font-display text-4xl font-light italic text-[#FAF8F4] mb-1">{store.userName || t.book.memoirs}</h1>
-          <p className="font-display text-lg italic text-[#7A4F32]">{t.book.memoirs}</p>
-          <p className="text-[#9C8E80]/60 text-sm mt-1">{new Date().getFullYear()}</p>
-          <div className="flex gap-3 justify-center mt-6">
+        {/* Book identity */}
+        <div className="bg-[#1C1C2E] rounded-2xl p-6 mb-6 flex items-center justify-between">
+          <div>
+            <p className="text-[#9C8E80] text-[10px] tracking-widest uppercase mb-1">{t.book.yourBook}</p>
+            <h1 className="font-display text-2xl font-light italic text-[#FAF8F4]">{store.userName || t.book.memoirs}</h1>
+            <p className="text-[#9C8E80]/60 text-xs mt-0.5">{new Date().getFullYear()} · {completedCount}/{store.chapters.length} {store.lang === 'fr' ? 'chapitres' : 'chapters'}</p>
+          </div>
+          <div className="flex gap-2">
             <button onClick={handleExport}
-              className="flex items-center gap-2 bg-[#C4622A] text-white text-sm font-medium px-5 py-2.5 rounded-full hover:opacity-90 transition-all">
+              className="bg-[#C4622A] text-white text-xs font-medium px-4 py-2 rounded-full hover:opacity-90 transition-all">
               {t.book.export}
             </button>
-            <button className="flex items-center gap-2 border border-[#FAF8F4]/20 text-[#FAF8F4] text-sm px-5 py-2.5 rounded-full hover:bg-[#FAF8F4]/10 transition-all">
+            <button className="border border-[#FAF8F4]/20 text-[#FAF8F4] text-xs px-4 py-2 rounded-full hover:bg-[#FAF8F4]/10 transition-all">
               {t.book.share}
             </button>
           </div>
-          {!store.trameCustom && (
-            <button
-              onClick={() => router.push('/trame/brainstorm')}
-              className="mt-4 text-sm text-[#9C8E80] hover:text-[#FAF8F4] transition-colors underline underline-offset-2"
-            >
-              {store.lang === 'fr' ? "Esquisser ma trame avec l'IA" : store.lang === 'es' ? 'Esbozar mi trama con la IA' : store.lang === 'tr' ? 'YZ ile hikayemi taslakla' : 'Outline my story with AI'}
-            </button>
-          )}
         </div>
-        <div className="bg-white rounded-2xl border border-[#EDE4D8] p-6 mb-6">
-          <p className="text-xs text-[#9C8E80] tracking-widest uppercase mb-3">{t.book.preface}</p>
-          <p className="font-display text-base italic text-[#1C1C2E] leading-relaxed">
-            {completedCount === 0 ? t.book.notStarted : prefaceFn(store.userName)}
-          </p>
-        </div>
-        <div className="bg-white rounded-2xl border border-[#EDE4D8] p-6 mb-6">
-          <p className="text-xs text-[#9C8E80] tracking-widest uppercase mb-4">{t.book.toc}</p>
-          <div className="space-y-0.5">
-            {store.chapters.map(ch => {
-              const d = getChapterDisplay(ch, lang4)
-              return (
-                <button
-                  key={ch.id}
-                  onClick={() => router.push(`/write/${ch.id}`)}
-                  className="w-full flex items-center justify-between py-2.5 border-b border-[#F5EFE0] last:border-0 hover:bg-[#F5EFE0] -mx-2 px-2 rounded-lg transition-all text-left"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className={`text-sm flex-shrink-0 ${ch.status === 'done' ? 'text-[#C4622A]' : 'text-[#D4C9BA]'}`}>
-                      {ch.status === 'done' ? '✓' : ch.number}
-                    </span>
-                    <div>
-                      <p className={`text-sm ${ch.status === 'done' ? 'text-[#1C1C2E] font-medium' : 'text-[#C4B9A8]'}`}>{d.title}</p>
-                      <p className="text-xs text-[#9C8E80]">{d.subtitle}</p>
-                    </div>
-                  </div>
-                  {ch.status === 'done' ? (
-                    <span className="text-xs text-[#9C8E80] flex-shrink-0 ml-4">
-                      {store.sessions.find(s => s.chapterId === ch.id)?.wordCount ?? 0} {t.book.words}
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-[#C4B9A8]/60 shrink-0 ml-4">→ Écrire</span>
-                  )}
-                </button>
-              )
-            })}
+
+        {/* Préface (only when chapters written) */}
+        {completedCount > 0 && (
+          <div className="bg-white rounded-2xl border border-[#EDE4D8] p-5 mb-6">
+            <p className="text-[10px] text-[#9C8E80] tracking-widest uppercase mb-2">{t.book.preface}</p>
+            <p className="font-display text-sm italic text-[#1C1C2E] leading-relaxed">
+              {prefaceFn(store.userName)}
+            </p>
           </div>
-        </div>
+        )}
+
+        {/* Plan éditorial inline — la section principale */}
+        <TrameDrawer inline isOpen onClose={() => {}} />
+
+        {/* Extraits */}
         {written.length > 0 && (
-          <div className="bg-white rounded-2xl border border-[#EDE4D8] p-6">
+          <div className="bg-white rounded-2xl border border-[#EDE4D8] p-6 mt-6">
             <p className="text-xs text-[#9C8E80] tracking-widest uppercase mb-4">{t.book.excerpts}</p>
             <div className="space-y-5">
               {written.map(ch => {
@@ -676,7 +693,7 @@ export default function HomePage() {
                 const content = store.sessions.find(s => s.chapterId === ch.id)?.content || ''
                 return (
                   <div key={ch.id} className="border-l-2 border-[#C4622A]/30 pl-4">
-                    <p className="text-xs font-medium text-[#1C1C2E] mb-1.5">{d.title}</p>
+                    <p className="text-xs font-medium text-[#1C1C2E] mb-1.5">{store.trameCustom ? d.title : `Chapitre ${ch.number}`}</p>
                     <p className="text-sm text-[#7A4F32] italic leading-relaxed">
                       {content ? content.slice(0, 250) + (content.length > 250 ? '…' : '') : <span className="text-[#9C8E80] not-italic">{t.book.noContent}</span>}
                     </p>

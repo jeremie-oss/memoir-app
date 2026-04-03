@@ -18,9 +18,10 @@ type BuildMode = null | 'libre' | 'ia' | 'ecrire'
 type Props = {
   isOpen: boolean
   onClose: () => void
+  inline?: boolean
 }
 
-export default function TrameDrawer({ isOpen, onClose }: Props) {
+export default function TrameDrawer({ isOpen, onClose, inline }: Props) {
   const router = useRouter()
   const store = useMemoirStore()
   const lang = store.lang
@@ -101,6 +102,8 @@ export default function TrameDrawer({ isOpen, onClose }: Props) {
       setBuildMode(null)
     } catch {
       setGenerateError(true)
+      // 'ia' mode fires with empty prompt — no error UI in that branch, reset to options
+      if ((prompt ?? '') === '') setBuildMode(null)
     } finally {
       setGenerating(false)
     }
@@ -145,7 +148,7 @@ export default function TrameDrawer({ isOpen, onClose }: Props) {
     setTimeout(() => { setEditingId(newId); setEditTitle(''); setEditSubtitle('') }, 30)
   }
 
-  if (!isOpen) return null
+  if (!isOpen && !inline) return null
 
   const isFr = lang === 'fr'
   const isEn = lang === 'en'
@@ -199,37 +202,34 @@ export default function TrameDrawer({ isOpen, onClose }: Props) {
   // Whether trame has real titles (trameCustom OR any chapter has a non-empty title that's not the default)
   const hasTitles = store.trameCustom
 
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="absolute inset-0 bg-[#1C1C2E]/40 backdrop-blur-sm" onClick={onClose} />
+  const inner = (
+    <div className={inline ? 'flex flex-col' : 'relative w-full max-w-2xl h-full bg-[#F5EFE0] shadow-2xl flex flex-col overflow-hidden'}>
+      {!inline && <div className="pointer-events-none absolute inset-0 opacity-[0.025]" style={GRAIN} />}
 
-      <div className="relative w-full max-w-2xl h-full bg-[#F5EFE0] shadow-2xl flex flex-col overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 opacity-[0.025]" style={GRAIN} />
-
-        {/* ── Header ── */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#EDE4D8] flex-shrink-0 relative z-10">
-          <div>
-            <h2 className="font-display text-xl italic text-[#1C1C2E]">{L.title}</h2>
-            <div className="flex items-center gap-2 mt-0.5">
-              <button
-                onClick={() => setShowPlanPicker(p => !p)}
-                className="text-[10px] px-2 py-0.5 rounded-full bg-[#EDE4D8] text-[#7A4F32] hover:bg-[#E0D4C4] transition-colors font-medium"
-              >
-                {plan.label}
-              </button>
-              <span className="text-[10px] text-[#9C8E80]">
-                {chaptersMax !== null
-                  ? `${chaptersCount}/${chaptersMax} ${L.chaptersLabel}`
-                  : `${chaptersCount} ${L.chaptersLabel}`}
-              </span>
-            </div>
+      {/* ── Header ── */}
+      <div className={`flex items-center justify-between ${inline ? 'mb-4' : 'px-6 py-4 border-b border-[#EDE4D8] flex-shrink-0 relative z-10'}`}>
+        <div>
+          {!inline && <h2 className="font-display text-xl italic text-[#1C1C2E]">{L.title}</h2>}
+          <div className="flex items-center gap-2 mt-0.5">
+            <button
+              onClick={() => setShowPlanPicker(p => !p)}
+              className="text-[10px] px-2 py-0.5 rounded-full bg-[#EDE4D8] text-[#7A4F32] hover:bg-[#E0D4C4] transition-colors font-medium"
+            >
+              {plan.label}
+            </button>
+            <span className="text-[10px] text-[#9C8E80]">
+              {chaptersMax !== null
+                ? `${chaptersCount}/${chaptersMax} ${L.chaptersLabel}`
+                : `${chaptersCount} ${L.chaptersLabel}`}
+            </span>
           </div>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center text-[#9C8E80] hover:text-[#1C1C2E] transition-colors text-xl">×</button>
         </div>
+        {!inline && <button onClick={onClose} className="w-8 h-8 flex items-center justify-center text-[#9C8E80] hover:text-[#1C1C2E] transition-colors text-xl">×</button>}
+      </div>
 
-        {/* ── Plan picker ── */}
-        {showPlanPicker && (
-          <div className="relative z-10 border-b border-[#EDE4D8] bg-white px-6 py-4 flex-shrink-0">
+      {/* ── Plan picker ── */}
+      {showPlanPicker && (
+        <div className={`${inline ? '' : 'relative z-10 border-b border-[#EDE4D8] flex-shrink-0'} bg-white px-6 py-4 mb-4 rounded-2xl border border-[#EDE4D8]`}>
             <p className="text-[10px] text-[#9C8E80] uppercase tracking-wider mb-3">{L.changePlan}</p>
             <div className="grid grid-cols-4 gap-2">
               {(['crayon', 'stilo', 'plum', 'gutenberg'] as PlanId[]).map(pid => {
@@ -255,12 +255,21 @@ export default function TrameDrawer({ isOpen, onClose }: Props) {
           </div>
         )}
 
-        {/* ── Content ── */}
-        <div className="flex-1 overflow-y-auto relative z-10 px-6 py-5 space-y-3">
+      {/* ── Content ── */}
+      <div className={`${inline ? '' : 'flex-1 overflow-y-auto relative z-10 px-6 py-5'} space-y-3`}>
 
           {/* ── BUILD OPTIONS (when no custom trame yet) ── */}
           {!hasTitles && !buildMode && (
             <div className="rounded-2xl border border-[#EDE4D8] bg-white overflow-hidden mb-2">
+              {generateError && (
+                <div className="px-5 py-3 bg-red-50 border-b border-red-100 flex items-center justify-between">
+                  <p className="text-xs text-red-600">{L.error}</p>
+                  <button
+                    onClick={() => { setGenerateError(false); setBuildMode('ia'); handleGenerate('') }}
+                    className="text-xs text-red-600 underline"
+                  >{L.retry}</button>
+                </div>
+              )}
               <div className="px-5 py-4 border-b border-[#EDE4D8]">
                 <p className="text-sm font-medium text-[#1C1C2E]">{L.howToBuild}</p>
               </div>
@@ -421,7 +430,7 @@ export default function TrameDrawer({ isOpen, onClose }: Props) {
                       <button onClick={() => removeChapter(ch.id)} disabled={ch.status === 'done' || store.chapters.length <= 1}
                         title={ch.status === 'done' ? L.writtenNoDelete : ''}
                         className="w-6 h-6 flex items-center justify-center text-[#C4B9A8] hover:text-red-400 disabled:opacity-20 transition-colors text-xs">×</button>
-                      <button onClick={() => { onClose(); router.push(`/write/${ch.id}`) }}
+                      <button onClick={() => { if (!inline) onClose(); router.push(`/write/${ch.id}`) }}
                         className="w-6 h-6 flex items-center justify-center text-[#C4622A] hover:text-[#7A4F32] transition-colors text-xs ml-0.5">→</button>
                     </div>
                   </div>
@@ -476,8 +485,16 @@ export default function TrameDrawer({ isOpen, onClose }: Props) {
             </div>
           )}
 
-        </div>
       </div>
+    </div>
+  )
+
+  if (inline) return inner
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="absolute inset-0 bg-[#1C1C2E]/40 backdrop-blur-sm" onClick={onClose} />
+      {inner}
     </div>
   )
 }
